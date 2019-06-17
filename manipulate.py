@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import cv2
 import random
 import io
+import sys
 
 '''
 Information of blocks
@@ -65,7 +66,7 @@ def manipulate(org_img,manipulate_type):
     Manipulation Type
     {gaussBlur, median, blur, gaussNoise, histoEq, motionBlur, motionBlur2}
     """
-    if manipulate_type == "gaussBlur_2":
+    if manipulate_type == "blur":
         # 2-D Gaussian smoothing kernel: gaussian_filter(img, sigma=(n))
         #sigma = 1 + random.random()*2
                 sigma = 2
@@ -77,11 +78,11 @@ def manipulate(org_img,manipulate_type):
         forged_img = cv2.medianBlur(org_img,3)
         return np.array(forged_img, dtype='uint8')
 
-    elif manipulate_type == "median_5":
+    elif manipulate_type == "median":
         forged_img = cv2.medianBlur(org_img,5)
         return np.array(forged_img, dtype='uint8')
 
-    elif manipulate_type == "gaussNoise_2":
+    elif manipulate_type == "noise":
         [row, col, c] = org_img.shape
         mean = 0
         sigma = 5

@@ -48,11 +48,6 @@ def main():
 
 	for fname in fnames:
 		meta = vio.ffprobe(fname)
-		# for x in meta:
-		# 	print(x)
-		# 	for y in meta[x]:
-		# 		print (y, ':', meta[x][y])
-		# return
 		vid = np.array(vio.vread(fname))
 		vid_retouched = np.zeros(vid.shape)
 		fn, w, h, c = vid.shape
@@ -67,7 +62,7 @@ def main():
 				output_file = dst_path + m + "/" + os.path.basename(fname)
 				print("%8d: %s" % (counter , output_file))
 				counter += 1
-				writer = vio.FFmpegWriter(filename=output_file, outputdict={'-r': '30', '-g': '4'}) # outputdict에 bitrate, gop 등 추가
+				writer = vio.FFmpegWriter(filename=output_file, outputdict={'-vcodec': 'libx264', '-r': '30', '-g': '4', '-bf': '0'}) # outputdict에 bitrate, gop 등 추가
 				for i in range(fn):
 				        writer.writeFrame(vid_retouched[i, :, :, :])
 				writer.close()
@@ -86,8 +81,22 @@ def main():
 			        writer.writeFrame(vid_retouched[i, :, :, :])
 			writer.close() 
 
-		
 
+	if False:
+		print(os.path.basename(output_file))
+
+		input_file = src_path + os.path.basename(output_file)
+		input_meta = vio.ffprobe(input_file)
+		for x in input_meta:
+			print(x)
+			for y in input_meta[x]:
+				print (y, ':', input_meta[x][y])
+		
+		output_meta = vio.ffprobe(output_file)
+		for x in output_meta:
+			print(x)
+			for y in output_meta[x]:
+				print (y, ':', output_meta[x][y])
 
 
 	print("Process end on directory \"%s\"" % dst_path)

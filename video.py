@@ -39,9 +39,6 @@ def main():
 	for m in methods:
 		os.mkdir(dst_path + m)
 
-	
-
-
 	counter = 1
 	fnames = glob.glob(src_path + "*")
 	print("%8s| file name" % "counter")
@@ -51,6 +48,7 @@ def main():
 		vid = np.array(vio.vread(fname))
 		vid_retouched = np.zeros(vid.shape)
 		fn, w, h, c = vid.shape
+		bitrate = fname.split("_")[4] + "k"
 
 		if method == "all":
 			for m in methods:
@@ -62,7 +60,7 @@ def main():
 				output_file = dst_path + m + "/" + os.path.basename(fname)
 				print("%8d: %s" % (counter , output_file))
 				counter += 1
-				writer = vio.FFmpegWriter(filename=output_file, outputdict={'-vcodec': 'libx264', '-r': '30', '-g': '4', '-bf': '0'}) # outputdict에 bitrate, gop 등 추가
+				writer = vio.FFmpegWriter(filename=output_file, outputdict={'-vcodec': 'libx264', '-r': '30', '-g': '4', '-bf': '0', '-b:v': bitrate, '-pix_fmt': 'yuv420p'}) # outputdict에 bitrate, gop 등 추가
 				for i in range(fn):
 				        writer.writeFrame(vid_retouched[i, :, :, :])
 				writer.close()
@@ -82,7 +80,7 @@ def main():
 			writer.close() 
 
 
-	if False:
+	if True:
 		print(os.path.basename(output_file))
 
 		input_file = src_path + os.path.basename(output_file)

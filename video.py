@@ -48,7 +48,8 @@ def main():
 		vid = np.array(vio.vread(fname))
 		vid_retouched = np.zeros(vid.shape)
 		fn, w, h, c = vid.shape
-		bitrate = fname.split("_")[4] + "k"
+		bitrate = os.path.basename(fname).split("_")[4] + "k"
+		print(bitrate)
 
 		if method == "all":
 			for m in methods:
@@ -74,13 +75,13 @@ def main():
 			output_file = dst_path + method + "/" + os.path.basename(fname)
 			print("%8d: %s" % (counter , output_file))
 			counter += 1
-			writer = vio.FFmpegWriter(filename=output_file, outputdict={}) # outputdict에 bitrate, gop 등 추가
+			writer = vio.FFmpegWriter(filename=output_file, outputdict={'-vcodec': 'libx264', '-r': '30', '-g': '4', '-bf': '0', '-b:v': bitrate, '-pix_fmt': 'yuv420p'}) # outputdict에 bitrate, gop 등 추가
 			for i in range(fn):
 			        writer.writeFrame(vid_retouched[i, :, :, :])
 			writer.close() 
 
 
-	if True:
+	if False:
 		print(os.path.basename(output_file))
 
 		input_file = src_path + os.path.basename(output_file)
@@ -98,19 +99,7 @@ def main():
 
 
 	print("Process end on directory \"%s\"" % dst_path)
-	# meta = vio.ffprobe('mclv_S_0_1_500_0_.mp4')
-	# vid = np.array(vio.vread('mclv_S_0_1_500_0_.mp4'))
-	# fn, w, h, c = vid.shape
 
-	# for i in range(fn):
-	#     vid[i,:,:,:] = manipulate(vid[i,:,:,:], 'gaussNoise_2') # manipulate.py 참고
-
-	# out = vid.astype(np.uint8)
-	# writer = vio.FFmpegWriter(filename="out.mp4", outputdict={}) # outputdict에 bitrate, gop 등 추가
-	# for i in range(fn):
-	#         writer.writeFrame(out[i, :, :, :])
-	# writer.close() 
-
-
+	
 if __name__=="__main__":
 	main()

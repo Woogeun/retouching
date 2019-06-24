@@ -10,12 +10,12 @@ from joblib import Parallel, delayed
 import glob
 import codecs
 import re
+
+
 def _int64_feature(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 def _int64list_feature(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
-
-
 def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
@@ -23,17 +23,17 @@ def _bytes_feature(value):
 
 
 
-def video_read_train(file, batch_size):
+def video_read_train(file, batch_size, stack_size):
     split_ = file.split('\\')
 
-    frames_arr = np.zeros([batch_size, 4, 256, 256, 3], dtype=np.uint8)
+    frames_arr = np.zeros([batch_size, stack_size, 256, 256, 3], dtype=np.uint8)
 
     video = imageio.get_reader(file, 'ffmpeg')
 
     video_len = video.get_length()
-    if video_len -4  < batch_size :
+    if video_len - stack_size  < batch_size :
         return
-    frame_nums = random.sample(range(0, video_len - 4), batch_size)
+    frame_nums = random.sample(range(0, video_len - stack_size), batch_size)
 
     for i in range(batch_size):
         frame_num = frame_nums[i]
@@ -115,21 +115,33 @@ def input_files(phase, method):
     s_files = ['{}/{}'.format(s_dir, f) for f in listdir(s_dir) if isfile(join(s_dir, f))]
     return s_files
 
+
 def build_tfrecord():
 
+    method = "*"
+    # method = "blur"
+    # method = "median"
+    # method = "noise"
+    
+    train_origianl_path = join("./train", "*.mp4")
+    train_tampered_path = join("./train_output0", method, "*.mp4")
+
+    test_origianl_path = join("./test", "*.mp4")
+    test_tampered_path = join("./test_output0", method, "*.mp4")
+
+    batch_size = 32
+    stack_size = 1
+
+    files = glob.glob(train_origianl_path) + glob.glob(train_tampered_path)
+    # Parallel(n_jobs=8)(delayed(video_read_train)(file, batch_size, stack_size) for file in files)
 
 
-    files = glob.glob('./data/crop_{}/tra*/*/*/*.mp4'.format('MI'))
-    Parallel(n_jobs=8)(delayed(video_read_train)(file, 15) for file in files)
+    # files = glob.glob('./data/crop_{}/tra*/*/*/*.mp4'.format('MI'))
+    # Parallel(n_jobs=8)(delayed(video_read_train)(file, 15) for file in files)
 
-    files = glob.glob('./data/crop_{}/te*/*/*/*.mp4'.format('MI'))
-    Parallel(n_jobs=8)(delayed(video_read_train)(file, 7) for file in files)
+    # files = glob.glob('./data/crop_{}/te*/*/*/*.mp4'.format('MI'))
+    # Parallel(n_jobs=8)(delayed(video_read_train)(file, 7) for file in files)
 
-    files = glob.glob('./data/crop_{}/tra*/*/*/*.mp4'.format('BI'))
-    Parallel(n_jobs=8)(delayed(video_read_train)(file, 15) for file in files)
-
-    files = glob.glob('./data/crop_{}/tes*/*/*/*.mp4'.format('BI'))
-    Parallel(n_jobs=8)(delayed(video_read_train)(file, 7) for file in files)
 
 if __name__ == '__main__' :
     build_tfrecord()

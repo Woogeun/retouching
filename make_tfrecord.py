@@ -13,6 +13,7 @@ import re
 
 counter = 1
 num_of_class = -1
+debug = False
 
 
 def _int64_feature(value):
@@ -98,13 +99,15 @@ def video_read(fname, stack_per_video, stack_size):
                 'fps' : _int64_feature(fps)
             }
 
+            # file write [15, 256, 256, 3]
             example = tf.train.Example(features = tf.train.Features(feature=features))
             writer.write(example.SerializeToString())
            
 
-    global counter
-    print("%8d: %s" % (counter , tfrecord_name))
-    counter += 1
+    if debug:
+        global counter
+        print("%8d: %s" % (counter , tfrecord_name))
+        counter += 1
     
 
     # split_ = fname.split('\\')
@@ -151,10 +154,12 @@ def build_tfrecord():
 
     fnames = glob.glob(train_origianl_path) + glob.glob(train_tampered_path)
 
-    print("%8s| file name" % "counter")
-    # for fname in fnames:
-    #     video_read(fname, stack_per_video, stack_size)
-    Parallel(n_jobs=4)(delayed(video_read)(fname, stack_per_video, stack_size) for fname in fnames)
+    if degug:
+        print("%8s| file name" % "counter")
+        for fname in fnames:
+            video_read(fname, stack_per_video, stack_size)
+    else:
+        Parallel(n_jobs=8)(delayed(video_read)(fname, stack_per_video, stack_size) for fname in fnames)
 
 
 

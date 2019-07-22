@@ -66,18 +66,16 @@ def main():
 
 	################################################## Setup the checkpoint and dataset files
 	# Set checkpoint 
-	callbacks = load_callbacks(LOG_PATH, METHOD, BATCH_SIZE, LR_UPDATE_INTERVAL, LR_UPDATE_RATE)
+	callbacks = load_callbacks(args)
 	
 
 	# Set train files
 	whole_fnames 	= glob(join(TRAIN_PATH, METHOD, BITRATE, "*.tfrecord"))
-	# whole_fnames  	= whole_fnames[:len(whole_fnames) // 50]
 	idx = int(len(whole_fnames) * FRACTION)
 	
 	valid_fnames 	= whole_fnames[:idx]
 	train_fnames 	= whole_fnames[idx:]
 	test_fnames 	= glob(join(TEST_PATH, METHOD, BITRATE, "*.tfrecord"))
-	# test_fnames 	= test_fnames[:len(test_fnames) // 50]
 
 	# Load data
 	valid_dataset  	= configure_dataset(valid_fnames, BATCH_SIZE)
@@ -97,8 +95,8 @@ def main():
 	# Setup train options
 	optimizer = tf.keras.optimizers.Adamax(lr=START_LR, beta_1=BETA_1, beta_2=BETA_2)
 	loss = tf.keras.losses.CategoricalCrossentropy()
-	loss = 'categorical_crossentropy'
 	metrics = [tf.keras.metrics.CategoricalAccuracy()]
+	
 	# metrics = [tf.keras.metrics.CategoricalAccuracy(), \
 	# 			tf.keras.metrics.TruePositives(), \
 	# 			tf.keras.metrics.TrueNegatives(), \
@@ -113,7 +111,7 @@ def main():
 	# Learn the model
 	STEPS_PER_EPOCH_TRAIN = len(train_fnames) // BATCH_SIZE
 	STEPS_PER_EPOCH_VALID = len(valid_fnames) // BATCH_SIZE
-	# STEPS_PER_EPOCH_VALID = 1
+
 
 	history = model.fit(train_dataset, \
 						epochs=EPOCHS, \
@@ -121,13 +119,16 @@ def main():
 						callbacks=callbacks, \
 						validation_data=valid_dataset, \
 						validation_steps=STEPS_PER_EPOCH_VALID)
+
+	# Add train history log
 	# print(history.history)
-	# K.learning_phase: 1
 
 
 	# Test the model
 	STEPS_TEST = len(test_fnames) // BATCH_SIZE
 	result = model.evaluate(test_dataset, steps=STEPS_TEST)
+	
+	# Add test log
 	# print(result)
 
 

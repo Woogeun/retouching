@@ -115,11 +115,20 @@ def lr_scheduler(epoch, lr, LR_UPDATE_INTERVAL, LR_UPDATE_RATE):
 	return lr
 
 
-def load_callbacks(LOG_PATH, METHOD, BATCH_SIZE, LR_UPDATE_INTERVAL, LR_UPDATE_RATE):
+def load_callbacks(args):
+
+	LOG_PATH 			= args.LOG_PATH
+	METHOD 				= args.METHOD
+	BATCH_SIZE 			= args.BATCH_SIZE
+	LR_UPDATE_INTERVAL 	= args.LR_UPDATE_INTERVAL
+	LR_UPDATE_RATE 		= args.LR_UPDATE_RATE
 
 	# 1. checkpoint callback
 	current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
 	LOG_PATH = join(LOG_PATH, current_time + "_{}".format("all" if METHOD=="*" else METHOD))
+	with open(join(LOG_PATH, 'setup.txt'), 'a') as f:
+		f.write(args)
+
 	ckpt_path = join(LOG_PATH, "checkpoint")
 	makedirs(ckpt_path)
 	ckpt_file = join(ckpt_path, "cp-{epoch:04d}.ckpt")

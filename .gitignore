@@ -114,3 +114,5 @@ video2tfrecord/
 retouch_tfrecord_train/
 retouch_tfrecord_test/
 logs/
+*.png
+*.bat

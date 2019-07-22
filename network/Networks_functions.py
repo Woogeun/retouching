@@ -96,12 +96,15 @@ def load_DCT_basis_256():
 
 
 #networks functions
+def l1(x):
+	return tf.reduce_sum(tf.abs(x))
+
 def l2(x):
 	return tf.nn.l2_loss(x)
 
 def weight_variable(shape):
-    initial = tf.truncated_normal(shape, stddev=0.1)
-    return tf.Variable(initial)
+	initializer = tf.contrib.layers.variance_scaling_initializer()
+	return tf.Variable(initializer(shape))
 
 def bias_variable(shape):
     initial = tf.constant(0.1, shape=shape)

@@ -188,7 +188,7 @@ with tf.Session(config=config) as sess :
                 _, summary = sess.run([train_op, merge], feed_dict={phase:True})
 
                 t_step += 1
-                if t_step %10 == 0:
+                if t_step % 10 == 0:
                     writer.add_summary(summary, t_step)
             except tf.errors.OutOfRangeError:
                 break

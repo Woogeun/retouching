@@ -95,6 +95,7 @@ def main():
 	# Setup train options
 	optimizer = tf.keras.optimizers.Adamax(lr=START_LR, beta_1=BETA_1, beta_2=BETA_2)
 	loss = tf.keras.losses.CategoricalCrossentropy()
+	loss = 'categorical_crossentropy'
 	metrics = [tf.keras.metrics.CategoricalAccuracy()]
 	
 	# metrics = [tf.keras.metrics.CategoricalAccuracy(), \

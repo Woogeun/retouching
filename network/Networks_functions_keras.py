@@ -117,20 +117,23 @@ def lr_scheduler(epoch, lr, LR_UPDATE_INTERVAL, LR_UPDATE_RATE):
 
 def load_callbacks(args):
 
-	LOG_PATH 			= args.LOG_PATH
-	METHOD 				= args.METHOD
-	BATCH_SIZE 			= args.BATCH_SIZE
-	LR_UPDATE_INTERVAL 	= args.LR_UPDATE_INTERVAL
-	LR_UPDATE_RATE 		= args.LR_UPDATE_RATE
+	LOG_PATH 			= args.log_path
+	METHOD 				= args.method
+	BATCH_SIZE 			= args.batch_size
+	LR_UPDATE_INTERVAL 	= args.lr_update_interval
+	LR_UPDATE_RATE 		= args.lr_update_rate
 
 	# 1. checkpoint callback
 	current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
 	LOG_PATH = join(LOG_PATH, current_time + "_{}".format("all" if METHOD=="*" else METHOD))
-	with open(join(LOG_PATH, 'setup.txt'), 'a') as f:
-		f.write(args)
 
 	ckpt_path = join(LOG_PATH, "checkpoint")
 	makedirs(ckpt_path)
+
+	# write the argument information
+	with open(join(LOG_PATH, 'setup.txt'), 'w') as f:
+		f.write(str(args))
+
 	ckpt_file = join(ckpt_path, "cp-{epoch:04d}.ckpt")
 	ckpt_callback = ModelCheckpoint(filepath=ckpt_file, save_weights_only=True, verbose=1, period=1)
 	
@@ -156,7 +159,7 @@ def conv2D(filters, kernel_size, strides=(1,1)):
 	use_bias 			= True
 	kernel_initializer 	= tf.keras.initializers.he_normal()
 	bias_initializer 	= tf.keras.initializers.constant(value=0.2)
-	kernel_regularizer 	= tf.keras.regularizers.l2(l=2e-4)
+	kernel_regularizer 	= tf.keras.regularizers.l2(l=1e-3)
 	bias_regularizer 	= None
 
 	return layers.Conv2D(filters=filters, \

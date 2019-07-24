@@ -13,7 +13,10 @@ from network.Networks_functions_keras import _parse_function, load_callbacks
 
 
 def configure_dataset(fnames, batch_size):
-	buffer_size = 16
+	buffer_size = len(fnames) / batch_size / 16 / 16
+	buffer_size = max(buffer_size, 16)
+	buffer_size = tf.cast(buffer_size, tf.int64)
+
 	dataset = tf.data.TFRecordDataset(fnames)
 	dataset = dataset.map(_parse_function, num_parallel_calls=cpu_count())
 	dataset = dataset.prefetch(buffer_size=buffer_size) # recommend buffer_size = # of elements / batches
@@ -40,7 +43,7 @@ def main():
 	parser.add_argument('--summary_interval', type=int, default=1, help='loss inverval')
 	parser.add_argument('--checkpoint_interval', type=int, default=1, help='checkpoint interval')
 	parser.add_argument('--start_lr', type=float, default=1e-03, help='start learning rate')
-	parser.add_argument('--lr_update_interval', type=int, default=1, help='learning rate update interval')
+	parser.add_argument('--lr_update_interval', type=int, default=18, help='learning rate update interval')
 	parser.add_argument('--lr_update_rate', type=float, default=0.9, help='learning rate update rate')
 	parser.add_argument('--beta1', type=float, default=0.9, help='beta 1 for Adamax')
 	parser.add_argument('--beta2', type=float, default=0.999, help='beta 2 for Adamax')
@@ -94,7 +97,7 @@ def main():
 
 	# Setup train options
 	optimizer = tf.keras.optimizers.Adamax(lr=START_LR, beta_1=BETA_1, beta_2=BETA_2)
-	loss = tf.keras.losses.CategoricalCrossentropy()
+	# loss = tf.keras.losses.CategoricalCrossentropy()
 	loss = 'categorical_crossentropy'
 	metrics = [tf.keras.metrics.CategoricalAccuracy()]
 	
@@ -106,13 +109,12 @@ def main():
 	
 
 	model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
-	tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True)
+	# tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True)
 
 
 	# Learn the model
 	STEPS_PER_EPOCH_TRAIN = len(train_fnames) // BATCH_SIZE
 	STEPS_PER_EPOCH_VALID = len(valid_fnames) // BATCH_SIZE
-
 
 	history = model.fit(train_dataset, \
 						epochs=EPOCHS, \

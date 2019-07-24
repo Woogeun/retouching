@@ -91,27 +91,56 @@ class CustomLearningRateScheduler(LearningRateScheduler):
 	def __init__(self, schedule, verbose, LR_UPDATE_INTERVAL, LR_UPDATE_RATE):
 		self.LR_UPDATE_INTERVAL = LR_UPDATE_INTERVAL
 		self.LR_UPDATE_RATE = LR_UPDATE_RATE
+		self.iteration = 0
 		super(CustomLearningRateScheduler, self).__init__(schedule, verbose)
 
-	def on_epoch_begin(self, epoch, logs=None):
+
+	def on_batch_begin(self, batch, logs=None):
 		if not hasattr(self.model.optimizer, 'lr'):
 			raise ValueError('Optimizer must have a "lr" attribute.')
 
+		self.iteration += 1
 		lr = float(K.get_value(self.model.optimizer.lr))
-		lr = self.schedule(epoch, lr, self.LR_UPDATE_INTERVAL, self.LR_UPDATE_RATE)
+		lr = self.schedule(self.iteration, lr, self.LR_UPDATE_INTERVAL, self.LR_UPDATE_RATE)
 		
 		if not isinstance(lr, (float, np.float32, np.float64)):
 			raise ValueError('The output of the "schedule" function should be float.')
 		
-		if self.verbose > 0 and lr != self.model.optimizer.lr:
-			print('\nEpoch %05d: LearningRateScheduler reducing learning rate to %10f.' % (epoch + 1, lr))
+		# if self.verbose > 0:
+		# 	print('\nIter %08d: LearningRateScheduler reducing learning rate to %10f.' % (self.iteration, lr))
 
 		K.set_value(self.model.optimizer.lr, lr)
 
 
-def lr_scheduler(epoch, lr, LR_UPDATE_INTERVAL, LR_UPDATE_RATE):
-	if epoch != 0 and epoch % LR_UPDATE_INTERVAL == 0:
-		lr *= LR_UPDATE_RATE
+	def on_batch_end(self, batch, logs=None):
+		logs = logs or {}
+		logs['lr'] = K.get_value(self.model.optimizer.lr)
+
+
+	def on_epoch_begin(self, epoch, logs=None):
+		pass
+	# 	if not hasattr(self.model.optimizer, 'lr'):
+	# 		raise ValueError('Optimizer must have a "lr" attribute.')
+
+		lr = float(K.get_value(self.model.optimizer.lr))
+	# 	lr = self.schedule(epoch, lr, self.LR_UPDATE_INTERVAL, self.LR_UPDATE_RATE)
+		
+	# 	if not isinstance(lr, (float, np.float32, np.float64)):
+	# 		raise ValueError('The output of the "schedule" function should be float.')
+		
+		if self.verbose > 0:
+			print('\nIter %05d: LearningRateScheduler reducing learning rate to %10f.' % (self.iteration + 1, lr))
+
+	# 	K.set_value(self.model.optimizer.lr, lr)
+
+
+	def on_epoch_end(self, epoch, logs=None):
+		pass
+	
+
+def lr_scheduler(iteration, lr, LR_UPDATE_INTERVAL, LR_UPDATE_RATE):
+	if iteration % LR_UPDATE_INTERVAL == 0:
+		lr *= LR_UPDATE_RATE 
 	return lr
 
 

@@ -1,8 +1,9 @@
 
 import argparse
+from os import cpu_count
 from os.path import join
 from glob import glob
-from os import cpu_count
+import random
 
 import tensorflow as tf
 from tensorflow.python import keras
@@ -13,14 +14,13 @@ from network.Networks_functions_keras import _parse_function, load_callbacks
 
 
 def configure_dataset(fnames, batch_size):
-	buffer_size = len(fnames) / batch_size / 16 / 16
-	buffer_size = max(buffer_size, 16)
+	buffer_size = max(len(fnames) / batch_size, 16)
 	buffer_size = tf.cast(buffer_size, tf.int64)
 
 	dataset = tf.data.TFRecordDataset(fnames)
 	dataset = dataset.map(_parse_function, num_parallel_calls=cpu_count())
 	dataset = dataset.prefetch(buffer_size=buffer_size) # recommend buffer_size = # of elements / batches
-	dataset = dataset.shuffle(buffer_size=buffer_size) # recommend buffer_size = # of elements / batches
+	dataset = dataset.shuffle(buffer_size=buffer_size, reshuffle_each_iteration=True) # recommend buffer_size = # of elements / batches
 	dataset = dataset.repeat()
 	dataset = dataset.batch(batch_size)
 
@@ -39,6 +39,8 @@ def main():
 	parser.add_argument('--br', type=str, default="*", help='bitrate')
 	parser.add_argument('--log_path', type=str, default='./logs', help='log path')
 	parser.add_argument('--batch_size', type=int, default=4, help='batch size')
+	parser.add_argument('--network_scale', type=float, default=1.0, help='network scale')
+	parser.add_argument('--regularizer', type=float, default=0.001, help='regularizer')
 	parser.add_argument('--epoch', type=int, default=3, help='epoch')
 	parser.add_argument('--summary_interval', type=int, default=1, help='loss inverval')
 	parser.add_argument('--checkpoint_interval', type=int, default=1, help='checkpoint interval')
@@ -56,6 +58,8 @@ def main():
 	BITRATE 			= args.br + "br"
 	LOG_PATH 			= args.log_path
 	BATCH_SIZE 			= args.batch_size
+	SCALE 				= args.network_scale
+	REG 				= args.regularizer
 	EPOCHS 				= args.epoch
 	SUMMARY_INTERVAL 	= args.summary_interval
 	CHECKPOINT_INTERVAL = args.checkpoint_interval
@@ -67,18 +71,16 @@ def main():
 
 
 
-	################################################## Setup the checkpoint and dataset files
-	# Set checkpoint 
-	callbacks = load_callbacks(args)
-	
-
-	# Set train files
-	whole_fnames 	= glob(join(TRAIN_PATH, METHOD, BITRATE, "*.tfrecord"))
-	idx = int(len(whole_fnames) * FRACTION)
-	
-	valid_fnames 	= whole_fnames[:idx]
-	train_fnames 	= whole_fnames[idx:]
+	################################################## Setup the dataset
+	# Set train, validation, and test data
+	total_fnames 	= glob(join(TRAIN_PATH, METHOD, BITRATE, "*.tfrecord"))
 	test_fnames 	= glob(join(TEST_PATH, METHOD, BITRATE, "*.tfrecord"))
+	random.shuffle(total_fnames)
+
+	idx = int(len(total_fnames) * FRACTION)
+	valid_fnames 	= total_fnames[:idx]
+	train_fnames 	= total_fnames[idx:]
+
 
 	# Load data
 	valid_dataset  	= configure_dataset(valid_fnames, BATCH_SIZE)
@@ -87,35 +89,37 @@ def main():
 	
 
 
-
-
-
 	################################################## Setup the training options
 	# Load model
-	model = SRNet()
+	model = SRNet(SCALE, REG)
 
 
 	# Setup train options
-	optimizer = tf.keras.optimizers.Adamax(lr=START_LR, beta_1=BETA_1, beta_2=BETA_2)
-	# loss = tf.keras.losses.CategoricalCrossentropy()
+	# optimizer = tf.keras.optimizers.Adamax(lr=START_LR, beta_1=BETA_1, beta_2=BETA_2)
+	optimizer = tf.keras.optimizers.Adam(lr=START_LR)
 	loss = 'categorical_crossentropy'
 	metrics = [tf.keras.metrics.CategoricalAccuracy()]
-	
 	# metrics = [tf.keras.metrics.CategoricalAccuracy(), \
 	# 			tf.keras.metrics.TruePositives(), \
 	# 			tf.keras.metrics.TrueNegatives(), \
 	# 			tf.keras.metrics.FalsePositives(), \
 	# 			tf.keras.metrics.FalseNegatives()]
-	
 
 	model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 	# tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True)
 
 
-	# Learn the model
+	################################################## Train the model
+	# Set callback functions 
+	callbacks = load_callbacks(args)
+
+
+	# Set number of steps per epoch
 	STEPS_PER_EPOCH_TRAIN = len(train_fnames) // BATCH_SIZE
 	STEPS_PER_EPOCH_VALID = len(valid_fnames) // BATCH_SIZE
 
+
+	# Train the model
 	history = model.fit(train_dataset, \
 						epochs=EPOCHS, \
 						steps_per_epoch=STEPS_PER_EPOCH_TRAIN, \
@@ -123,15 +127,22 @@ def main():
 						validation_data=valid_dataset, \
 						validation_steps=STEPS_PER_EPOCH_VALID)
 
-	# Add train history log
+
+	# Store train logs
 	# print(history.history)
 
 
-	# Test the model
+
+	################################################## Test the model
+	# Set number of steps of test
 	STEPS_TEST = len(test_fnames) // BATCH_SIZE
+
+
+	# Test the model
 	result = model.evaluate(test_dataset, steps=STEPS_TEST)
 	
-	# Add test log
+
+	# Store test logs
 	# print(result)
 
 

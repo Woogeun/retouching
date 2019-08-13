@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow.python.keras.layers import Layer
 from tensorflow.python.keras import Model, Input
+from . import Networks_functions_keras
 from .Networks_functions_keras import *
 
 
@@ -131,12 +132,18 @@ class SRNetLayer(Layer):
 
 # SRNet
 class SRNet(Model):
-	def __init__(self, **kwargs):
+	def __init__(self, scale, reg, **kwargs):
 		super(SRNet, self).__init__(**kwargs)
+		Networks_functions_keras.SCALE = scale
+		Networks_functions_keras.REG = reg
 		self.network = SRNetLayer()
 
 	def call(self, inputs):
 		return self.network(inputs)
+
+
+
+
 
 
 # alternative solution

@@ -48,8 +48,8 @@ def _parse_function(example_proto):
 
 
 
-
 ##################### Log file manager
+# custom tensorboard callback
 class TrainValTensorBoard(TensorBoard):
 	def __init__(self, log_dir='./logs', **kwargs):
 		self.val_log_dir = join(log_dir, 'validation')
@@ -87,6 +87,7 @@ class TrainValTensorBoard(TensorBoard):
 		self.val_writer.close()
 
 
+# custom learning rate scheduler callback
 class CustomLearningRateScheduler(LearningRateScheduler):
 	def __init__(self, schedule, verbose, LR_UPDATE_INTERVAL, LR_UPDATE_RATE):
 		self.LR_UPDATE_INTERVAL = LR_UPDATE_INTERVAL
@@ -136,7 +137,6 @@ class CustomLearningRateScheduler(LearningRateScheduler):
 
 	def on_epoch_end(self, epoch, logs=None):
 		pass
-	
 
 def lr_scheduler(iteration, lr, LR_UPDATE_INTERVAL, LR_UPDATE_RATE):
 	if iteration % LR_UPDATE_INTERVAL == 0:
@@ -144,6 +144,7 @@ def lr_scheduler(iteration, lr, LR_UPDATE_INTERVAL, LR_UPDATE_RATE):
 	return lr
 
 
+# Return callback classes
 def load_callbacks(args):
 
 	LOG_PATH 			= args.log_path
@@ -180,15 +181,19 @@ def load_callbacks(args):
 
 
 ##################### Network layer functions
+SCALE = 1.0
+REG = 0.001
+
 # weights
 def conv2D(filters, kernel_size, strides=(1,1)):
+	filters 			= int(SCALE * filters)
 	padding 			= 'same'
 	data_format 		= 'channels_last'
 	activation 			= None
 	use_bias 			= True
 	kernel_initializer 	= tf.keras.initializers.he_normal()
 	bias_initializer 	= tf.keras.initializers.constant(value=0.2)
-	kernel_regularizer 	= tf.keras.regularizers.l2(l=1e-3)
+	kernel_regularizer 	= tf.keras.regularizers.l2(l=REG)
 	bias_regularizer 	= None
 
 	return layers.Conv2D(filters=filters, \

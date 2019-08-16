@@ -130,7 +130,7 @@ class SRNetLayer(Layer):
 
 # SRNet
 class SRNet(Model):
-	def __init__(self, scale, reg, **kwargs):
+	def __init__(self, scale=1.0, reg=0.001, **kwargs):
 		super(SRNet, self).__init__(**kwargs)
 		Networks_functions_keras.SCALE = scale
 		Networks_functions_keras.REG = reg

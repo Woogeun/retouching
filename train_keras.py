@@ -1,31 +1,14 @@
 
 import argparse
-from os import cpu_count
 from os.path import join
 from glob import glob
-import random
 
 import tensorflow as tf
 from tensorflow.python import keras
 from keras import backend as K
 
 from network.Networks_structure_srnet_keras import SRNet, SRNet_
-from network.Networks_functions_keras import _parse_function, load_callbacks
-
-
-def configure_dataset(fnames, batch_size):
-	buffer_size = max(len(fnames) / batch_size, 16) # recommend buffer_size = # of elements / batches
-	buffer_size = tf.cast(buffer_size, tf.int64)
-
-	dataset = tf.data.TFRecordDataset(fnames)
-	dataset = dataset.map(_parse_function, num_parallel_calls=cpu_count())
-	dataset = dataset.prefetch(buffer_size=buffer_size) 
-	dataset = dataset.shuffle(buffer_size=buffer_size, reshuffle_each_iteration=True) 
-	dataset = dataset.repeat()
-	dataset = dataset.batch(batch_size)
-
-	return dataset
-
+from network.Networks_functions_keras import configure_dataset, load_callbacks, write_args, write_history, write_result
 
 
 def main():
@@ -71,7 +54,6 @@ def main():
 	# Set train, validation, and test data
 	total_fnames 	= glob(join(TRAIN_PATH, METHOD, BITRATE, "*.tfrecord"))
 	test_fnames 	= glob(join(TEST_PATH, METHOD, BITRATE, "*.tfrecord"))
-	# random.shuffle(total_fnames)
 
 	idx = int(len(total_fnames) * FRACTION)
 	valid_fnames 	= total_fnames[:idx]
@@ -93,20 +75,26 @@ def main():
 	# Setup train options
 	optimizer = tf.keras.optimizers.Adam(lr=START_LR)
 	loss = 'categorical_crossentropy'
-	metrics = [tf.keras.metrics.CategoricalAccuracy()]
-	# metrics = [tf.keras.metrics.CategoricalAccuracy(), \
-	# 			tf.keras.metrics.TruePositives(), \
-	# 			tf.keras.metrics.TrueNegatives(), \
-	# 			tf.keras.metrics.FalsePositives(), \
-	# 			tf.keras.metrics.FalseNegatives()]
+	metrics = {	"Accuracy": tf.keras.metrics.CategoricalAccuracy()}
+	metrics = {	"Accuracy": tf.keras.metrics.CategoricalAccuracy(), \
+				# "True Positive": tf.keras.metrics.TruePositives(), \
+				# "True Negative": tf.keras.metrics.TrueNegatives(), \
+				# "False Positive": tf.keras.metrics.FalsePositives(), \
+				# "False Negative": tf.keras.metrics.FalseNegatives()}
+				"SensitivityAtSpecificity": tf.keras.metrics.SensitivityAtSpecificity(specificity=0.5, num_thresholds=1)}
 
-	model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+	model.compile(optimizer=optimizer, loss=loss, metrics=list(metrics.values()))
 	# tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True)
+
 
 
 	################################################## Train the model
 	# Set callback functions 
-	callbacks = load_callbacks(args)
+	LOG_PATH, callbacks = load_callbacks(args)
+
+
+	# write the argument information
+	write_args(args, join(LOG_PATH, "setup.txt"))
 
 
 	# Set number of steps per epoch
@@ -115,30 +103,24 @@ def main():
 
 
 	# Train the model
+
 	history = model.fit(train_dataset, \
 						epochs=EPOCHS, \
 						steps_per_epoch=STEPS_PER_EPOCH_TRAIN, \
 						callbacks=callbacks, \
 						validation_data=valid_dataset, \
-						validation_steps=STEPS_PER_EPOCH_VALID)
+						validation_steps=STEPS_PER_EPOCH_VALID, \
+						verbose=1)
 
-
-	# Store train logs
-	# print(history.history)
+	write_history(history, join(LOG_PATH, "train.txt"))
 
 
 
 	################################################## Test the model
-	# Set number of steps of test
 	STEPS_TEST = len(test_fnames) // BATCH_SIZE
-
-
-	# Test the model
 	result = model.evaluate(test_dataset, steps=STEPS_TEST)
 	
-
-	# Store test logs
-	# print(result)
+	write_result(metrics.keys(), result, join(LOG_PATH, "test.txt"))
 
 
 

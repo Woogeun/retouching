@@ -1,6 +1,6 @@
 
 from datetime import datetime
-from os import makedirs
+from os import makedirs, cpu_count
 from os.path import join
 
 import numpy as np
@@ -16,6 +16,29 @@ from tensorflow.python.keras.callbacks import ModelCheckpoint, TensorBoard, Lear
 ##################### Network parameters
 SCALE = 1.0
 REG = 0.001
+
+
+##################### Simple helper functions
+def write_args(args, filepath):
+	args_dict = vars(args)
+	with open(filepath, 'w') as f:
+		for key, value in args_dict.items():
+			f.write("{:20s}: {}\n".format(key, value))
+
+
+def write_history(history, filepath):
+	with open(filepath, 'w') as f:
+		for key, values in history.history.items():
+			f.write("{}\n".format(key))
+			for value in values:
+				f.write("{:0.5f}\n".format(value))
+			f.write("\n")
+
+
+def write_result(keys, values, filepath):
+	with open(filepath, 'w') as f:
+		for key, value in zip(keys, values):
+			f.write("{:20s}: {:0.5f}\n".format(key, value))
 
 
 
@@ -51,6 +74,21 @@ def _parse_function(example_proto):
 
 	# return frames, label, br
 	return frames, label
+
+
+# Setup the dataset options
+def configure_dataset(fnames, batch_size):
+	buffer_size = max(len(fnames) / batch_size, 16) # recommend buffer_size = # of elements / batches
+	buffer_size = tf.cast(buffer_size, tf.int64)
+
+	dataset = tf.data.TFRecordDataset(fnames)
+	dataset = dataset.map(_parse_function, num_parallel_calls=cpu_count())
+	dataset = dataset.prefetch(buffer_size=buffer_size) 
+	dataset = dataset.shuffle(buffer_size=buffer_size, reshuffle_each_iteration=True) 
+	dataset = dataset.repeat()
+	dataset = dataset.batch(batch_size)
+
+	return dataset
 
 
 
@@ -112,9 +150,6 @@ class CustomLearningRateScheduler(LearningRateScheduler):
 		
 		if not isinstance(lr, (float, np.float32, np.float64)):
 			raise ValueError('The output of the "schedule" function should be float.')
-		
-		# if self.verbose > 0:
-		# 	print('\nIter %08d: LearningRateScheduler reducing learning rate to %10f.' % (self.iteration, lr))
 
 		K.set_value(self.model.optimizer.lr, lr)
 
@@ -125,20 +160,10 @@ class CustomLearningRateScheduler(LearningRateScheduler):
 
 
 	def on_epoch_begin(self, epoch, logs=None):
-		pass
-	# 	if not hasattr(self.model.optimizer, 'lr'):
-	# 		raise ValueError('Optimizer must have a "lr" attribute.')
-
 		lr = float(K.get_value(self.model.optimizer.lr))
-	# 	lr = self.schedule(epoch, lr, self.LR_UPDATE_INTERVAL, self.LR_UPDATE_RATE)
-		
-	# 	if not isinstance(lr, (float, np.float32, np.float64)):
-	# 		raise ValueError('The output of the "schedule" function should be float.')
-		
 		if self.verbose > 0:
 			print('\nIter %05d: LearningRateScheduler reducing learning rate to %10f.' % (self.iteration + 1, lr))
 
-	# 	K.set_value(self.model.optimizer.lr, lr)
 
 
 	def on_epoch_end(self, epoch, logs=None):
@@ -152,32 +177,27 @@ def lr_scheduler(iteration, lr, LR_UPDATE_INTERVAL, LR_UPDATE_RATE):
 
 # Return callback classes
 def load_callbacks(args):
-
 	LOG_PATH 			= args.log_path
 	METHOD 				= args.method
 	BATCH_SIZE 			= args.batch_size
 	LR_UPDATE_INTERVAL 	= args.lr_update_interval
 	LR_UPDATE_RATE 		= args.lr_update_rate
 
-	# 1. checkpoint callback
+	# Set log file path
 	current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
 	LOG_PATH = join(LOG_PATH, current_time + "_{}".format("all" if METHOD=="*" else METHOD))
 
+
+	# 1. checkpoint callback
 	ckpt_path = join(LOG_PATH, "checkpoint")
 	makedirs(ckpt_path)
-
-	# write the argument information
-	with open(join(LOG_PATH, 'setup.txt'), 'w') as f:
-		args_dict = vars(args)
-		for key, value in args_dict.items():
-			f.write("{}: {}".format(key, value))
-			f.write("\n")
-
 	ckpt_file = join(ckpt_path, "cp-{epoch:04d}.ckpt")
 	ckpt_callback = ModelCheckpoint(filepath=ckpt_file, save_weights_only=True, verbose=1, period=1)
 	
+
 	# 2. tensorboard callback
 	tb_callback = TrainValTensorBoard(log_dir=LOG_PATH, batch_size=BATCH_SIZE, update_freq='batch')
+
 
 	# 3. learning rate scheduler callback
 	lr_callback = CustomLearningRateScheduler(	schedule=lr_scheduler, \
@@ -185,7 +205,10 @@ def load_callbacks(args):
 												LR_UPDATE_INTERVAL=LR_UPDATE_INTERVAL, \
 										 		LR_UPDATE_RATE=LR_UPDATE_RATE)
 
-	return [ckpt_callback, tb_callback, lr_callback]
+
+	
+
+	return LOG_PATH, [ckpt_callback, tb_callback, lr_callback]
 
 
 

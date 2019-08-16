@@ -105,7 +105,6 @@ class SRNetLayer(Layer):
 		self.l12_t4 = Type4(512)
 
 		self.fc = dense(2, use_bias=False, activation='softmax')
-		self.softmax = softmax()
 
 	def call(self, inputs):
 		x = self.l1_t1(inputs)
@@ -125,7 +124,6 @@ class SRNetLayer(Layer):
 		x = self.l12_t4(x)
 
 		x = self.fc(x)
-		# x = self.softmax(x)
 
 		return x
 

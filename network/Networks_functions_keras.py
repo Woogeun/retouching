@@ -13,6 +13,12 @@ from tensorflow.python.keras.callbacks import ModelCheckpoint, TensorBoard, Lear
 
 
 
+##################### Network parameters
+SCALE = 1.0
+REG = 0.001
+
+
+
 ##################### Dataset parsing functions
 # Convert bytes data into tensorflow array
 def _bytes_to_array(features, key, element_type, dimension):
@@ -162,7 +168,10 @@ def load_callbacks(args):
 
 	# write the argument information
 	with open(join(LOG_PATH, 'setup.txt'), 'w') as f:
-		f.write(str(args))
+		args_dict = vars(args)
+		for key, value in args_dict.items():
+			f.write("{}: {}".format(key, value))
+			f.write("\n")
 
 	ckpt_file = join(ckpt_path, "cp-{epoch:04d}.ckpt")
 	ckpt_callback = ModelCheckpoint(filepath=ckpt_file, save_weights_only=True, verbose=1, period=1)
@@ -181,9 +190,6 @@ def load_callbacks(args):
 
 
 ##################### Network layer functions
-SCALE = 1.0
-REG = 0.001
-
 # weights
 def conv2D(filters, kernel_size, strides=(1,1)):
 	filters 			= int(SCALE * filters)

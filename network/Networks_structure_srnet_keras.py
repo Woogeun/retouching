@@ -12,7 +12,7 @@ class Type1(Layer):
 
 		self.conv = conv2D(filters, (3,3), (1,1))
 		self.batchNorm = batchNorm()
-		self.relu = ReLU()
+		self.relu = relu()
 
 	def call(self, inputs):
 		x = self.conv(inputs)

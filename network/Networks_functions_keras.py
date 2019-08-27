@@ -1,4 +1,5 @@
 
+import random
 from datetime import datetime
 from os import makedirs, cpu_count
 from os.path import join
@@ -8,8 +9,9 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.eager import context
 from tensorflow.python.keras import backend as K
-from tensorflow.python.keras import layers
-from tensorflow.python.keras.callbacks import ModelCheckpoint, TensorBoard, LearningRateScheduler
+from tensorflow.python.keras import layers, activations
+from tensorflow.python.keras import constraints
+from tensorflow.python.keras.callbacks import ModelCheckpoint, TensorBoard, LearningRateScheduler, EarlyStopping
 
 
 
@@ -78,6 +80,7 @@ def _parse_function(example_proto):
 
 # Setup the dataset options
 def configure_dataset(fnames, batch_size):
+	random.shuffle(fnames)
 	buffer_size = max(len(fnames) / batch_size, 16) # recommend buffer_size = # of elements / batches
 	buffer_size = tf.cast(buffer_size, tf.int64)
 
@@ -92,7 +95,7 @@ def configure_dataset(fnames, batch_size):
 
 
 
-##################### Log file manager
+##################### Manage callback classes
 # custom tensorboard callback
 class TrainValTensorBoard(TensorBoard):
 	def __init__(self, log_dir='./logs', **kwargs):
@@ -133,41 +136,62 @@ class TrainValTensorBoard(TensorBoard):
 
 # custom learning rate scheduler callback
 class CustomLearningRateScheduler(LearningRateScheduler):
-	def __init__(self, schedule, verbose, LR_UPDATE_INTERVAL, LR_UPDATE_RATE):
+	def __init__(self, schedule, verbose, LR_UPDATE_INTERVAL, LR_UPDATE_RATE, mode="iter"):
 		self.LR_UPDATE_INTERVAL = LR_UPDATE_INTERVAL
 		self.LR_UPDATE_RATE = LR_UPDATE_RATE
+		self.mode = mode
+		if self.mode == "epoch":
+			self.LR_UPDATE_INTERVAL = 1
 		self.iteration = 0
+
 		super(CustomLearningRateScheduler, self).__init__(schedule, verbose)
 
 
 	def on_batch_begin(self, batch, logs=None):
-		if not hasattr(self.model.optimizer, 'lr'):
-			raise ValueError('Optimizer must have a "lr" attribute.')
+		if self.mode == "iter":
+			if not hasattr(self.model.optimizer, 'lr'):
+				raise ValueError('Optimizer must have a "lr" attribute.')
 
-		self.iteration += 1
-		lr = float(K.get_value(self.model.optimizer.lr))
-		lr = self.schedule(self.iteration, lr, self.LR_UPDATE_INTERVAL, self.LR_UPDATE_RATE)
-		
-		if not isinstance(lr, (float, np.float32, np.float64)):
-			raise ValueError('The output of the "schedule" function should be float.')
+			self.iteration += 1
+			lr = float(K.get_value(self.model.optimizer.lr))
+			lr = self.schedule(self.iteration, lr, self.LR_UPDATE_INTERVAL, self.LR_UPDATE_RATE)
+			
+			if not isinstance(lr, (float, np.float32, np.float64)):
+				raise ValueError('The output of the "schedule" function should be float.')
 
-		K.set_value(self.model.optimizer.lr, lr)
+			K.set_value(self.model.optimizer.lr, lr)
 
 
 	def on_batch_end(self, batch, logs=None):
-		logs = logs or {}
-		logs['lr'] = K.get_value(self.model.optimizer.lr)
+		if self.mode == "iter":
+			logs = logs or {}
+			logs['lr'] = K.get_value(self.model.optimizer.lr)
 
 
 	def on_epoch_begin(self, epoch, logs=None):
+		if self.mode == "epoch":
+			if not hasattr(self.model.optimizer, 'lr'):
+				raise ValueError('Optimizer must have a "lr" attribute.')
+
+			lr = float(K.get_value(self.model.optimizer.lr))
+			lr = self.schedule(epoch, lr, self.LR_UPDATE_INTERVAL, self.LR_UPDATE_RATE)
+			
+			if not isinstance(lr, (float, np.float32, np.float64)):
+				raise ValueError('The output of the "schedule" function should be float.')
+
+			K.set_value(self.model.optimizer.lr, lr)
+
+		# Log learning rate information
 		lr = float(K.get_value(self.model.optimizer.lr))
 		if self.verbose > 0:
-			print('\nIter %05d: LearningRateScheduler reducing learning rate to %10f.' % (self.iteration + 1, lr))
-
+			print('\n%05d: LearningRateScheduler reducing learning rate to %10f.' % (((epoch + 1) if self.mode == "epoch" else (self.iteration + 1)), lr))
 
 
 	def on_epoch_end(self, epoch, logs=None):
-		pass
+		if self.mode == "epoch":
+			logs = logs or {}
+			logs['lr'] = K.get_value(self.model.optimizer.lr)
+
 
 def lr_scheduler(iteration, lr, LR_UPDATE_INTERVAL, LR_UPDATE_RATE):
 	if iteration % LR_UPDATE_INTERVAL == 0:
@@ -203,7 +227,15 @@ def load_callbacks(args):
 	lr_callback = CustomLearningRateScheduler(	schedule=lr_scheduler, \
 												verbose=1, \
 												LR_UPDATE_INTERVAL=LR_UPDATE_INTERVAL, \
-										 		LR_UPDATE_RATE=LR_UPDATE_RATE)
+										 		LR_UPDATE_RATE=LR_UPDATE_RATE, \
+										 		mode="epoch")
+
+
+	# 4. early stop callback
+	earlyStop_callback = EarlyStopping(	monitor='val_loss', \
+										min_delta=1e-2, \
+										patience=3, \
+										verbose=1)
 
 
 	
@@ -212,9 +244,59 @@ def load_callbacks(args):
 
 
 
+##################### Custom constraint objects
+# Custum constraint
+class CustomConstraint(constraints.Constraint):
+	def __init__(self, sum=1, center=-1, axis=None):
+		self.sum = sum
+		self.center = center
+		self.axis = axis
+
+	def __call__(self, w):
+		# get center coordinates
+		shape = w.get_shape().as_list()
+		assert(shape[0] % 2 == 1)
+		assert(shape[1] % 2 == 1)
+		centerX_ = (shape[0]-1)/2
+		centerY_ = (shape[1]-1)/2
+		centerX = tf.cast(centerX_, dtype=tf.int64)
+		centerY = tf.cast(centerY_, dtype=tf.int64)
+
+		# get impulse tensor which has same center value with w and other values are 0
+		centerValue = w[centerX, centerY]
+		impulse = K.zeros(shape)
+		impulse = impulse[centerX, centerY].assign(centerValue)
+
+		# get impulse tensor which has center value is -1 and other values are 0
+		minus_ones = self.center * tf.constant(np.ones(shape), dtype=tf.float32)
+		impulse_ = K.zeros(shape)
+		impulse_ = impulse_[centerX, centerY].assign(minus_ones[centerX, centerY])
+
+
+		# set center value to zero
+		w -= impulse
+
+
+		# normalize
+		w /= K.sum(w, axis=self.axis)
+
+
+		# set center value to -1
+		w += impulse_
+
+		return w
+
+
+
+	def get_config(self):
+
+		return {'sum': self.sum, 'center': self.center, 'axis': self.axis}
+
+
+
 ##################### Network layer functions
 # weights
-def conv2D(filters, kernel_size, strides=(1,1)):
+def conv2D(filters, kernel_size, strides=(1,1), kernel_constraint=None):
 	filters 			= int(SCALE * filters)
 	padding 			= 'same'
 	data_format 		= 'channels_last'
@@ -235,7 +317,8 @@ def conv2D(filters, kernel_size, strides=(1,1)):
 						kernel_initializer=kernel_initializer, \
 						bias_initializer=bias_initializer, \
 						kernel_regularizer=kernel_regularizer, \
-						bias_regularizer=bias_regularizer)
+						bias_regularizer=bias_regularizer,
+						kernel_constraint=kernel_constraint)
 
 def dense(units, use_bias=True, activation=None):
 	activation 			= activation
@@ -255,30 +338,28 @@ def dense(units, use_bias=True, activation=None):
 
 
 # activations
-def ReLU():
-	max_value 		= None
-	negative_slope 	= 0
-	threshold 		= 0
+def relu():
 
-	return layers.ReLU(	max_value=max_value, \
-						negative_slope=negative_slope, \
-						threshold=threshold)
+	return activations.relu
 
 def softmax():
 
-	return layers.Softmax()
+	return activations.softmax
+
+def tanh():
+
+	return activations.tanh
 
 
 # pooling
-def maxPooling2D(pool_size):
-	strides 	= None
-	padding 	= 'valid'
+def maxPooling2D(pool_size, strides=(1,1)):
+	padding 	= 'same'
 
 	return layers.MaxPool2D(pool_size=pool_size, \
 							strides=strides, \
 							padding=padding)
 
-def averagePooling2D(pool_size, strides):
+def averagePooling2D(pool_size, strides=(1,1)):
 	padding 	= 'same'
 	data_format = None
 
@@ -328,7 +409,7 @@ def batchNorm():
 
 def flatten():
 
-	return layers.flatten()
+	return layers.Flatten()
 
 def add(*args):
 	return layers.Add()(*args)

@@ -10,6 +10,8 @@ from keras import backend as K
 from network.Networks_structure_srnet_keras import SRNet, SRNet_
 from network.Networks_functions_keras import configure_dataset, load_callbacks, write_args, write_history, write_result
 
+from network.Networks_structure_CCNN_keras import MISLNet
+
 
 def main():
 
@@ -30,6 +32,7 @@ def main():
 	parser.add_argument('--start_lr', type=float, default=1e-03, help='start learning rate')
 	parser.add_argument('--lr_update_interval', type=int, default=18, help='learning rate update interval')
 	parser.add_argument('--lr_update_rate', type=float, default=0.9, help='learning rate update rate')
+	parser.add_argument('--network', type=str, default="SRNet", help='SRNet or MISLNet')
 	args = parser.parse_args()
 
 	TRAIN_PATH 			= args.train_path
@@ -47,6 +50,7 @@ def main():
 	START_LR 			= args.start_lr
 	LR_UPDATE_INTERVAL 	= args.lr_update_interval
 	LR_UPDATE_RATE 		= args.lr_update_rate
+	NETWORK 			= args.network
 
 
 
@@ -69,19 +73,23 @@ def main():
 
 	################################################## Setup the training options
 	# Load model
-	model = SRNet(SCALE, REG)
+	if NETWORK == "SRNet":
+		model = SRNet(SCALE, REG)
+	elif NETWORK == "MISLNet":
+		model = MISLNet(SCALE, REG)
 
 
 	# Setup train options
 	optimizer = tf.keras.optimizers.Adam(lr=START_LR)
+	optimizer = tf.keras.optimizers.Adamax(lr=START_LR)
 	loss = 'categorical_crossentropy'
 	metrics = {	"Accuracy": tf.keras.metrics.CategoricalAccuracy()}
-	metrics = {	"Accuracy": tf.keras.metrics.CategoricalAccuracy(), \
+	# metrics = {	"Accuracy": tf.keras.metrics.CategoricalAccuracy(), \
 				# "True Positive": tf.keras.metrics.TruePositives(), \
 				# "True Negative": tf.keras.metrics.TrueNegatives(), \
 				# "False Positive": tf.keras.metrics.FalsePositives(), \
 				# "False Negative": tf.keras.metrics.FalseNegatives()}
-				"SensitivityAtSpecificity": tf.keras.metrics.SensitivityAtSpecificity(specificity=0.5, num_thresholds=1)}
+				# "SensitivityAtSpecificity": tf.keras.metrics.SensitivityAtSpecificity(specificity=0.5, num_thresholds=1)}
 
 	model.compile(optimizer=optimizer, loss=loss, metrics=list(metrics.values()))
 	# tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True)
@@ -103,7 +111,6 @@ def main():
 
 
 	# Train the model
-
 	history = model.fit(train_dataset, \
 						epochs=EPOCHS, \
 						steps_per_epoch=STEPS_PER_EPOCH_TRAIN, \
@@ -120,7 +127,7 @@ def main():
 	STEPS_TEST = len(test_fnames) // BATCH_SIZE
 	result = model.evaluate(test_dataset, steps=STEPS_TEST)
 	
-	write_result(metrics.keys(), result, join(LOG_PATH, "test.txt"))
+	write_result(["Loss"] + list(metrics.keys()), result, join(LOG_PATH, "test.txt"))
 
 
 

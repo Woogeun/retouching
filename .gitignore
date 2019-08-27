@@ -116,3 +116,4 @@ retouch_tfrecord_test/
 logs/
 *.png
 *.bat
+assign.py

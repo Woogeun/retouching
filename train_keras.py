@@ -7,10 +7,11 @@ import tensorflow as tf
 from tensorflow.python import keras
 from keras import backend as K
 
-from network.Networks_structure_srnet_keras import SRNet, SRNet_
-from network.Networks_functions_keras import configure_dataset, load_callbacks, write_args, write_history, write_result
+from network.Networks_structure_srnet_keras import SRNet 
+from network.Networks_structure_mislnet_keras import MISLNet
+from network.Networks_functions_keras import configure_dataset, load_callbacks, print_args, write_args, write_history, write_result
 
-from network.Networks_structure_CCNN_keras import MISLNet
+
 
 
 def main():
@@ -52,13 +53,18 @@ def main():
 	LR_UPDATE_RATE 		= args.lr_update_rate
 	NETWORK 			= args.network
 
+	print_args(args)
+
 
 
 	################################################## Setup the dataset
 	# Set train, validation, and test data
 	total_fnames 	= glob(join(TRAIN_PATH, METHOD, BITRATE, "*.tfrecord"))
+	# total_fnames = total_fnames[:int(len(total_fnames)/24)]
 	test_fnames 	= glob(join(TEST_PATH, METHOD, BITRATE, "*.tfrecord"))
 
+
+	# Split train datset and validation dataset
 	idx = int(len(total_fnames) * FRACTION)
 	valid_fnames 	= total_fnames[:idx]
 	train_fnames 	= total_fnames[idx:]
@@ -92,6 +98,9 @@ def main():
 				# "SensitivityAtSpecificity": tf.keras.metrics.SensitivityAtSpecificity(specificity=0.5, num_thresholds=1)}
 
 	model.compile(optimizer=optimizer, loss=loss, metrics=list(metrics.values()))
+	model.build(input_shape=(None,256,256,1))
+	model.summary()
+	# print("***************", len(model.layers))
 	# tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True)
 
 

@@ -84,9 +84,11 @@ class Type4(Layer):
 
 
 # SRNet whole layer
-class SRNetLayer(Layer):
-	def __init__(self, **kwargs):
-		super(SRNetLayer, self).__init__(**kwargs)
+class SRNet(Model):
+	def __init__(self, scale=1.0, reg=0.001, **kwargs):
+		super(SRNet, self).__init__(**kwargs)
+		Networks_functions_keras.SCALE = scale
+		Networks_functions_keras.REG = reg
 
 		self.l1_t1 = Type1(64)
 		self.l2_t1 = Type1(16)
@@ -127,50 +129,6 @@ class SRNetLayer(Layer):
 
 		return x
 
-
-# SRNet
-class SRNet(Model):
-	def __init__(self, scale=1.0, reg=0.001, **kwargs):
-		super(SRNet, self).__init__(**kwargs)
-		Networks_functions_keras.SCALE = scale
-		Networks_functions_keras.REG = reg
-		self.network = SRNetLayer()
-
-	def call(self, inputs):
-		return self.network(inputs)
-
-
-
-
-
-
-# alternative solution
-def SRNet_():
-
-	inputs = Input(shape=(256,256,1))
-	t1_l1 = Type1(64)(inputs)
-	t1_l2 = Type1(16)(t1_l1)
-
-	t2_l3 = Type2(16)(t1_l2)
-	t2_l4 = Type2(16)(t2_l3)
-	t2_l5 = Type2(16)(t2_l4)
-	t2_l6 = Type2(16)(t2_l5)
-	t2_l7 = Type2(16)(t2_l6)
-
-	t3_l8 = Type3(16)(t2_l7)
-	t3_l9 = Type3(64)(t3_l8)
-	t3_l10 = Type3(128)(t3_l9)
-	t3_l11 = Type3(256)(t3_l10)
-
-	t4_l12 = Type4(512)(t3_l11)
-
-	fc = dense(2, use_bias=False)(t4_l12)
-
-	outputs = softmax()(fc)
-
-	model = Model(inputs=inputs, outputs=outputs)
-
-	return model
 
 
 

@@ -14,7 +14,6 @@ from .Networks_functions_keras import *
 class ConstrainedLayer(Layer):
 	def __init__(self, filters, size, strides, **kwargs):
 		super(ConstrainedLayer, self).__init__(**kwargs)
-
 		constraint = CustomConstraint(sum=1, center=-1)
 		self.conv = conv2D(filters, size, strides, kernel_constraint=constraint)
 
@@ -24,9 +23,12 @@ class ConstrainedLayer(Layer):
 
 
 # SRNet whole layer
-class MISLLayer(Layer):
-	def __init__(self, **kwargs):
-		super(MISLLayer, self).__init__(**kwargs)
+class MISLNet(Model):
+	# def __init__(self, **kwargs):
+	def __init__(self, scale=1.0, reg=0.001, **kwargs):
+		super(MISLNet, self).__init__(**kwargs)
+		Networks_functions_keras.SCALE = scale
+		Networks_functions_keras.REG = reg
 
 		# prediction error feature extraction
 		self.conv1 			= ConstrainedLayer(3, (5,5), (1,1))
@@ -92,19 +94,6 @@ class MISLLayer(Layer):
 		x = self.fc3(x)
 
 		return x
-
-
-# SRNet
-class MISLNet(Model):
-	def __init__(self, scale=1.0, reg=0.001, **kwargs):
-		super(MISLNet, self).__init__(**kwargs)
-		Networks_functions_keras.SCALE = scale
-		Networks_functions_keras.REG = reg
-		self.network = MISLLayer()
-
-	def call(self, inputs):
-		return self.network(inputs)
-
 
 
 

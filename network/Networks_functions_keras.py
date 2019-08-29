@@ -11,7 +11,7 @@ from tensorflow.python.eager import context
 from tensorflow.python.keras import backend as K
 from tensorflow.python.keras import layers, activations
 from tensorflow.python.keras import constraints
-from tensorflow.python.keras.callbacks import ModelCheckpoint, TensorBoard, LearningRateScheduler, EarlyStopping
+from tensorflow.python.keras.callbacks import Callback, ModelCheckpoint, TensorBoard, LearningRateScheduler, EarlyStopping
 
 
 
@@ -21,6 +21,12 @@ REG = 0.001
 
 
 ##################### Simple helper functions
+def print_args(args):
+	args_dict = vars(args)
+	for key, value in args_dict.items():
+		print("{:20s}: {}\n".format(key, value))
+
+
 def write_args(args, filepath):
 	args_dict = vars(args)
 	with open(filepath, 'w') as f:
@@ -96,6 +102,16 @@ def configure_dataset(fnames, batch_size):
 
 
 ##################### Manage callback classes
+# custom model checkpoint save callback
+class SaveWeight(Callback):
+	def __init__(self, ckpt_path, **kwargs):
+		super(SaveWeight, self).__init__(**kwargs)
+		self.ckpt_path = ckpt_path
+
+	def on_epoch_end(self, epoch, logs):
+		self.model.save_weights(join(self.ckpt_path, "weights_{}".format(epoch)), save_format='h5')
+
+
 # custom tensorboard callback
 class TrainValTensorBoard(TensorBoard):
 	def __init__(self, log_dir='./logs', **kwargs):
@@ -192,11 +208,21 @@ class CustomLearningRateScheduler(LearningRateScheduler):
 			logs = logs or {}
 			logs['lr'] = K.get_value(self.model.optimizer.lr)
 
-
 def lr_scheduler(iteration, lr, LR_UPDATE_INTERVAL, LR_UPDATE_RATE):
 	if iteration % LR_UPDATE_INTERVAL == 0:
 		lr *= LR_UPDATE_RATE 
 	return lr
+
+
+
+# get weight callback
+class GetWeight(Callback):
+	def __init__(self, **kwargs):
+		super(GetWeight, self).__init__(**kwargs)
+
+	def on_epoch_begin(self, epoch, logs):
+		print(self.model.layers[0].get_weights()[0])
+
 
 
 # Return callback classes
@@ -215,8 +241,7 @@ def load_callbacks(args):
 	# 1. checkpoint callback
 	ckpt_path = join(LOG_PATH, "checkpoint")
 	makedirs(ckpt_path)
-	ckpt_file = join(ckpt_path, "cp-{epoch:04d}.ckpt")
-	ckpt_callback = ModelCheckpoint(filepath=ckpt_file, save_weights_only=True, verbose=1, period=1)
+	ckpt_callback = SaveWeight(ckpt_path)
 	
 
 	# 2. tensorboard callback
@@ -238,9 +263,16 @@ def load_callbacks(args):
 										verbose=1)
 
 
+	# 5. print first layer callback for debug
+	getWeight_callback = GetWeight()
 	
 
-	return LOG_PATH, [ckpt_callback, tb_callback, lr_callback]
+	return LOG_PATH, [	ckpt_callback, \
+						tb_callback, \
+						lr_callback, \
+						# earlyStop_callback, \
+						# getWeight_callback, \
+						]
 
 
 
@@ -278,7 +310,7 @@ class CustomConstraint(constraints.Constraint):
 
 
 		# normalize
-		w /= K.sum(w, axis=self.axis)
+		w /= K.sum(w, axis=self.axis) / self.sum
 
 
 		# set center value to -1

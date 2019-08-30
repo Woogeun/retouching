@@ -9,6 +9,7 @@ from keras import backend as K
 
 from network.Networks_structure_srnet_keras import SRNet 
 from network.Networks_structure_mislnet_keras import MISLNet
+from network.Networks_structure_namnet_keras import NamNet
 from network.Networks_functions_keras import configure_dataset, load_callbacks, print_args, write_args, write_history, write_result
 
 
@@ -33,7 +34,7 @@ def main():
 	parser.add_argument('--start_lr', type=float, default=1e-03, help='start learning rate')
 	parser.add_argument('--lr_update_interval', type=int, default=18, help='learning rate update interval')
 	parser.add_argument('--lr_update_rate', type=float, default=0.9, help='learning rate update rate')
-	parser.add_argument('--network', type=str, default="SRNet", help='SRNet or MISLNet')
+	parser.add_argument('--network', type=str, default="SRNet", help='SRNet or MISLNet or NamNet')
 	args = parser.parse_args()
 
 	TRAIN_PATH 			= args.train_path

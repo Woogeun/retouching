@@ -109,8 +109,8 @@ venv.bak/
 /test.*
 before.meta
 after.meta
-manipulation/
-video2tfrecord/
+# manipulation/
+# video2tfrecord/
 retouch_tfrecord_train/
 retouch_tfrecord_test/
 logs/

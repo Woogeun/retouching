@@ -14,7 +14,6 @@ from .Networks_functions_keras import *
 
 
 
-# Type1 layer
 class Type1(Layer):
 	"""Layer class of NamNet type 1."""
 
@@ -41,7 +40,6 @@ class Type1(Layer):
 		return x
 
 
-# Type2 layer
 class Type2(Layer):
 	"""Layer class of NamNet type 2."""
 
@@ -56,7 +54,6 @@ class Type2(Layer):
 		return add([x, inputs])
 
 
-# Type3 layer
 class Type3(Layer):
 	"""Layer class of NamNet type 3."""
 
@@ -91,7 +88,6 @@ class Type3(Layer):
 		return add([x1, x2])
 
 
-# Type4 layer
 class Type4(Layer):
 	"""Layer class of NamNet type 4."""
 
@@ -108,7 +104,6 @@ class Type4(Layer):
 		return x
 
 
-# SRNet whole layer
 class NamNet(Model):
 	"""NamNet class."""
 

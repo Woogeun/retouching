@@ -15,15 +15,15 @@ import tensorflow as tf
 from tensorflow.python.eager import context
 from tensorflow.python.keras import backend as K
 from tensorflow.python.keras import layers, activations
-from tensorflow.python.keras import constraints
+from tensorflow.python.keras.constraints import Constraint
 from tensorflow.python.keras.callbacks import Callback, ModelCheckpoint, TensorBoard, LearningRateScheduler, EarlyStopping
 
 
 
 
 ##################### Network parameters
-# This is the default internal TF session used by Keras.
-# It can be set manually via `set_session(sess)`.
+# These are the default train parameters of network models.
+# It can be set manually via `Networks_functions_keras.SCALE = 0.5`.
 SCALE = 1.0
 REG = 0.001
 
@@ -295,7 +295,6 @@ def lr_scheduler(iteration, lr, LR_UPDATE_INTERVAL, LR_UPDATE_RATE):
 	return lr
 
 
-
 # get weight callback
 class GetWeight(Callback):
 	"""Callback class for debugging the first layer weights by print."""
@@ -369,7 +368,7 @@ def load_callbacks(args):
 
 ##################### Custom constraint objects
 # Custum constraint
-class CustomConstraint(constraints.Constraint):
+class CustomConstraint(Constraint):
 	"""Constraint class for first layer of Bayar network."""
 
 	def __init__(self, sum=1, center=-1, axis=None):

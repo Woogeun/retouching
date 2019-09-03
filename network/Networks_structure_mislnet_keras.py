@@ -15,7 +15,6 @@ from .Networks_functions_keras import *
 
 
 
-# Constrained convolutional layer
 class ConstrainedLayer(Layer):
 	"""Layer Class of first layer of Bayar network."""
 
@@ -29,7 +28,7 @@ class ConstrainedLayer(Layer):
 		return x
 
 
-# SRNet whole layer
+
 class MISLNet(Model):
 	"""MISLNet class."""
 

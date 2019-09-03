@@ -23,87 +23,90 @@ from network.Networks_structure_mislnet_keras import MISLNet
 
 
 
-def detect_frame(model, frame):
-	"""Detect a framewise tampering
-
-   	# arguments
-   		model: trained tf.keras.models
-   		frame: numpy array of one frame
-
-	# Returns
-		The result accuracy of the frame can be tampered. If frame is not tampered, result is closer to [1 0], else [0 1]
-	"""
-
-	result_accuracy = model.predict(np.array([frame]), verbose=0)
-
-	return result_accuracy
+class Detector():
+	"""Class for the detecting whether the video is tampered or not."""
+	def __init__(self, model):
+		self.model = model
+		pass
 
 
-def is_original(data):
-	"""Determine the videowise tampering
+	def detect_frame(frame):
+		"""Detect a framewise tampering
 
-   	# arguments
-   		data: the list of the probability of frame can be tampered
+	   	# arguments
+	   		frame: numpy array of one frame
 
-	# Returns
-		The bool that input video is not tampered. If the video is not tampered, returns True, else False.
-	"""
-	
-	return False
+		# Returns
+			The result accuracy of the frame can be tampered. If frame is not tampered, result is closer to [1 0], else [0 1]
+		"""
 
+		result_accuracy = self.model.predict(np.array([frame]), verbose=0)
 
-def show_result(data):
-	"""Show the graph of predicted data visually
-
-   	# arguments
-   		data: the list of the probability of frame can be tampered
-	"""
-
-	fn = range(len(data))
-	plt.plot(fn, data)
-	plt.show()
+		return result_accuracy[0,1]
 
 
-def detect_video(model, video_name, is_show=False):
-	"""Detect a videowise tampering
+	def is_original(data):
+		"""Determine the videowise tampering
 
-   	# arguments
-   		model: trained tf.keras.models
-   		video_name: the string of video file name
-   		is_show: the bool of whether show the result graph
+	   	# arguments
+	   		data: the list of the probability of frame can be tampered
 
-	# Returns
-		The tuple of whether the video is tampered and predicted data
-	"""
-
-	# Read video
-	video_meta = vio.ffprobe(video_name)
-	video = np.array(vio.vread(video_name, outputdict={"-pix_fmt": "gray"}))
-	fn, w, h, c = video.shape
-	if w != 256 or h != 256 or c != 1: 
-		raise(BaseException("================ wrong size file: \"{}\"".format(fname)))
+		# Returns
+			The bool that input video is not tampered. If the video is not tampered, returns True, else False.
+		"""
+		
+		return False
 
 
-	# Predict the video retouch tampering
-	predicted_data = []
-	for idx, frame in enumerate(video):
-		result = detect_frame(model, frame)
-		predicted_data.append(result[0,1])
+	def show_result(data):
+		"""Show the graph of predicted data visually
+
+	   	# arguments
+	   		data: the list of the probability of frame can be tampered
+		"""
+
+		fn = range(len(data))
+		plt.plot(fn, data)
+		plt.show()
+
+
+	def detect_video(video_name, is_show=False):
+		"""Detect a videowise tampering
+
+	   	# arguments
+	   		video_name: the string of video file name
+	   		is_show: the bool of whether show the result graph
+
+		# Returns
+			The tuple of whether the video is tampered and predicted data
+		"""
+
+		# Read video
+		video_meta = vio.ffprobe(video_name)
+		video = np.array(vio.vread(video_name, outputdict={"-pix_fmt": "gray"}))
+		fn, w, h, c = video.shape
+		if w != 256 or h != 256 or c != 1: 
+			raise(BaseException("================ wrong size file: \"{}\"".format(fname)))
+
+
+		# Predict the video retouch tampering
+		predicted_data = []
+		for idx, frame in enumerate(video):
+			result = detect_frame(frame)
+			predicted_data.append(result)
+
+			if is_show:
+				print("{}: {}".format(idx, result))
+			
+
+		prediction = is_original(predicted_data)
+
 
 		if is_show:
-			print("{}: {}".format(idx, result))
-		
+			show_result(predicted_data)
+			print("Original: ", prediction)
 
-	prediction = is_original(predicted_data)
-
-
-	if is_show:
-		show_result(predicted_data)
-		print("Original: ", prediction)
-
-	return prediction, predicted_data
-
-
+		return prediction, predicted_data
 
 
 
@@ -153,6 +156,8 @@ def main():
 
 
 	################################################## Predict the data
+	detector = Detector(model)
+
 	if isdir(FILE_PATH):
 		total_result = []
 		fnames = glob(join(FILE_PATH, "*.mp4"))
@@ -161,12 +166,12 @@ def main():
 
 		for idx, fname in enumerate(fnames):
 			print("*********************{}: {}".format(idx, fname))
-			prediction, predicted_data = detect_video(model, fname, is_show=False)
+			prediction, predicted_data = detector.detect_video(model, fname, is_show=False)
 			total_result += predicted_data
 		print(np.mean(total_result))
 
 	else:
-		prediction, predicted_data = detect_video(model, FILE_PATH, is_show=False)
+		prediction, predicted_data = detector.detect_video(model, FILE_PATH, is_show=False)
 		print(np.mean(predicted_data))
 
 	

@@ -1,6 +1,11 @@
+"""
+MISLNet module
+@authorized by Shasha Bae
+@description: define the Bayar network(MISLNet)
+"""
+
 import tensorflow as tf
 from tensorflow.python import keras
-
 from tensorflow.python.keras import Model, Input
 from tensorflow.python.keras.layers import Layer
 
@@ -12,6 +17,8 @@ from .Networks_functions_keras import *
 
 # Constrained convolutional layer
 class ConstrainedLayer(Layer):
+	"""Layer Class of first layer of Bayar network."""
+
 	def __init__(self, filters, size, strides, **kwargs):
 		super(ConstrainedLayer, self).__init__(**kwargs)
 		constraint = CustomConstraint(sum=1, center=-1)
@@ -24,7 +31,8 @@ class ConstrainedLayer(Layer):
 
 # SRNet whole layer
 class MISLNet(Model):
-	# def __init__(self, **kwargs):
+	"""MISLNet class."""
+
 	def __init__(self, scale=1.0, reg=0.001, **kwargs):
 		super(MISLNet, self).__init__(**kwargs)
 		Networks_functions_keras.SCALE = scale

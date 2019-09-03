@@ -1,12 +1,23 @@
+"""
+SRNet module
+@authorized by Shasha Bae
+@description: define the SRNet
+"""
+
 import tensorflow as tf
 from tensorflow.python.keras.layers import Layer
 from tensorflow.python.keras import Model, Input
+
 from . import Networks_functions_keras
 from .Networks_functions_keras import *
 
 
+
+
 # Type1 layer
 class Type1(Layer):
+	"""Layer class of SRNet type 1."""
+
 	def __init__(self, filters, **kwargs):
 		super(Type1, self).__init__(**kwargs)
 
@@ -24,6 +35,8 @@ class Type1(Layer):
 
 # Type2 layer
 class Type2(Layer):
+	"""Layer class of SRNet type 2."""
+
 	def __init__(self, filters, **kwargs):
 		super(Type2, self).__init__(**kwargs)
 
@@ -41,6 +54,8 @@ class Type2(Layer):
 
 # Type3 layer
 class Type3(Layer):
+	"""Layer class of SRNet type 3."""
+
 	def __init__(self, filters, **kwargs):
 		super(Type3, self).__init__(**kwargs)
 
@@ -66,6 +81,8 @@ class Type3(Layer):
 
 # Type4 layer
 class Type4(Layer):
+	"""Layer class of SRNet type 4."""
+
 	def __init__(self, filters, **kwargs):
 		super(Type4, self).__init__(**kwargs)
 
@@ -85,6 +102,8 @@ class Type4(Layer):
 
 # SRNet whole layer
 class SRNet(Model):
+	"""SRNet class."""
+
 	def __init__(self, scale=1.0, reg=0.001, **kwargs):
 		super(SRNet, self).__init__(**kwargs)
 		Networks_functions_keras.SCALE = scale

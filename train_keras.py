@@ -1,3 +1,8 @@
+"""
+Video retouch detection training module
+@authorized by Shasha Bae
+@description: train the model for retouch detection
+"""
 
 import argparse
 from os.path import join
@@ -26,6 +31,7 @@ def main():
 	parser.add_argument('--br', type=str, default="*", help='bitrate')
 	parser.add_argument('--log_path', type=str, default='./logs', help='log path')
 	parser.add_argument('--batch_size', type=int, default=4, help='batch size')
+	parser.add_argument('--network', type=str, default="INPUT_NETWORK", help='SRNet or MISLNet or NamNet')
 	parser.add_argument('--network_scale', type=float, default=1.0, help='network scale')
 	parser.add_argument('--regularizer', type=float, default=0.001, help='regularizer')
 	parser.add_argument('--epoch', type=int, default=3, help='epoch')
@@ -34,7 +40,7 @@ def main():
 	parser.add_argument('--start_lr', type=float, default=1e-03, help='start learning rate')
 	parser.add_argument('--lr_update_interval', type=int, default=18, help='learning rate update interval')
 	parser.add_argument('--lr_update_rate', type=float, default=0.9, help='learning rate update rate')
-	parser.add_argument('--network', type=str, default="SRNet", help='SRNet or MISLNet or NamNet')
+	
 	args = parser.parse_args()
 
 	TRAIN_PATH 			= args.train_path
@@ -44,6 +50,7 @@ def main():
 	BITRATE 			= args.br + "br"
 	LOG_PATH 			= args.log_path
 	BATCH_SIZE 			= args.batch_size
+	NETWORK 			= args.network
 	SCALE 				= args.network_scale
 	REG 				= args.regularizer
 	EPOCHS 				= args.epoch
@@ -52,7 +59,7 @@ def main():
 	START_LR 			= args.start_lr
 	LR_UPDATE_INTERVAL 	= args.lr_update_interval
 	LR_UPDATE_RATE 		= args.lr_update_rate
-	NETWORK 			= args.network
+	
 
 	print_args(args)
 
@@ -84,10 +91,13 @@ def main():
 		model = SRNet(SCALE, REG)
 	elif NETWORK == "MISLNet":
 		model = MISLNet(SCALE, REG)
+	elif NETWORK == "NamNet":
+		model = NamNet(SCALE, REG)
+	else:
+		raise(BaseException("No such network: {}".format(NETWORK)))
 
 
 	# Setup train options
-	optimizer = tf.keras.optimizers.Adam(lr=START_LR)
 	optimizer = tf.keras.optimizers.Adamax(lr=START_LR)
 	loss = 'categorical_crossentropy'
 	metrics = {	"Accuracy": tf.keras.metrics.CategoricalAccuracy()}
@@ -101,8 +111,7 @@ def main():
 	model.compile(optimizer=optimizer, loss=loss, metrics=list(metrics.values()))
 	model.build(input_shape=(None,256,256,1))
 	model.summary()
-	# print("***************", len(model.layers))
-	# tf.keras.utils.plot_model(model, to_file='model.png', show_shapes=True)
+	model.load_weights("./logs/20190829_180354_noise_91/checkpoint/weights_29")
 
 
 

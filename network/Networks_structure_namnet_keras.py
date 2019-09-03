@@ -1,12 +1,23 @@
+"""
+NamNet module
+@authorized by Shasha Bae
+@description: define the NamNet
+"""
+
 import tensorflow as tf
 from tensorflow.python.keras.layers import Layer
 from tensorflow.python.keras import Model, Input
+
 from . import Networks_functions_keras
 from .Networks_functions_keras import *
 
 
+
+
 # Type1 layer
 class Type1(Layer):
+	"""Layer class of NamNet type 1."""
+
 	def __init__(self, filters, **kwargs):
 		super(Type1, self).__init__(**kwargs)
 
@@ -32,6 +43,8 @@ class Type1(Layer):
 
 # Type2 layer
 class Type2(Layer):
+	"""Layer class of NamNet type 2."""
+
 	def __init__(self, filters, **kwargs):
 		super(Type2, self).__init__(**kwargs)
 
@@ -45,6 +58,8 @@ class Type2(Layer):
 
 # Type3 layer
 class Type3(Layer):
+	"""Layer class of NamNet type 3."""
+
 	def __init__(self, filters, **kwargs):
 		super(Type3, self).__init__(**kwargs)
 
@@ -78,6 +93,8 @@ class Type3(Layer):
 
 # Type4 layer
 class Type4(Layer):
+	"""Layer class of NamNet type 4."""
+
 	def __init__(self, filters, **kwargs):
 		super(Type4, self).__init__(**kwargs)
 
@@ -93,6 +110,8 @@ class Type4(Layer):
 
 # SRNet whole layer
 class NamNet(Model):
+	"""NamNet class."""
+
 	def __init__(self, scale=1.0, reg=0.001, **kwargs):
 		super(NamNet, self).__init__(**kwargs)
 		Networks_functions_keras.SCALE = scale

@@ -1,3 +1,8 @@
+"""
+Tensorflow keras functions
+@authorized by Shasha Bae
+@description: tensorflow keras helper functions for logging setup, dataset configuration, training, and network layers 
+"""
 
 import random
 from datetime import datetime
@@ -15,19 +20,35 @@ from tensorflow.python.keras.callbacks import Callback, ModelCheckpoint, TensorB
 
 
 
+
 ##################### Network parameters
+# This is the default internal TF session used by Keras.
+# It can be set manually via `set_session(sess)`.
 SCALE = 1.0
 REG = 0.001
 
 
 ##################### Simple helper functions
 def print_args(args):
+	"""Print logs for arguments
+
+   	# Arguments
+    	args: the argparser parsed object
+	"""
+
 	args_dict = vars(args)
 	for key, value in args_dict.items():
 		print("{:20s}: {}\n".format(key, value))
 
 
 def write_args(args, filepath):
+	"""Write logs for arguments to the file
+
+   	# Arguments
+    	args: the argparser parsed object
+    	filepath: the log file path to be written
+	"""
+
 	args_dict = vars(args)
 	with open(filepath, 'w') as f:
 		for key, value in args_dict.items():
@@ -35,6 +56,13 @@ def write_args(args, filepath):
 
 
 def write_history(history, filepath):
+	"""Write training history to the file
+
+   	# Arguments
+    	history: the history object returned from tf.keras.model.fit()
+    	filepath: the history file path to be written
+	"""
+
 	with open(filepath, 'w') as f:
 		for key, values in history.history.items():
 			f.write("{}\n".format(key))
@@ -44,6 +72,14 @@ def write_history(history, filepath):
 
 
 def write_result(keys, values, filepath):
+	"""Write test result to the file
+
+   	# Arguments
+   		keys: the string list of metrics of the model
+    	values: the result value returned from tf.keras.model.evaluate()
+    	filepath: the result file path to be written
+	"""
+
 	with open(filepath, 'w') as f:
 		for key, value in zip(keys, values):
 			f.write("{:20s}: {:0.5f}\n".format(key, value))
@@ -51,8 +87,19 @@ def write_result(keys, values, filepath):
 
 
 ##################### Dataset parsing functions
-# Convert bytes data into tensorflow array
 def _bytes_to_array(features, key, element_type, dimension):
+	"""Convert bytes data into tensorflow array
+
+   	# arguments
+   		features: tfrecord data
+   		key: string label
+    	element_type: the tensorflow data type for cast
+    	dimension: list or numpy array or tensor for conversion dimension
+
+	# Returns
+		A tensorflow data structure converted from bytes data
+	"""
+
 	return 	tf.cast(\
 				tf.reshape(\
 					tf.decode_raw(\
@@ -62,8 +109,16 @@ def _bytes_to_array(features, key, element_type, dimension):
 				tf.float32)
 
 
-# Parse dataset 
 def _parse_function(example_proto):
+	"""Parse the example prototype data to tensorflow data structure
+
+   	# arguments
+   		example_proto: tensorflow example prototype object
+
+	# Returns
+		A pair of frames data and string label
+	"""
+
 	feature_description = {
 		# mendatory informations
 		'frames': tf.FixedLenFeature([], dtype=tf.string, default_value=""),
@@ -84,8 +139,17 @@ def _parse_function(example_proto):
 	return frames, label
 
 
-# Setup the dataset options
 def configure_dataset(fnames, batch_size):
+	"""Configure the dataset 
+
+   	# arguments
+   		fnames: the list of strings of tfrecord file names
+   		batch_size: the int represents batch size
+
+	# Returns
+		A dataset object configured by batch size
+	"""
+
 	random.shuffle(fnames)
 	buffer_size = max(len(fnames) / batch_size, 16) # recommend buffer_size = # of elements / batches
 	buffer_size = tf.cast(buffer_size, tf.int64)
@@ -104,6 +168,8 @@ def configure_dataset(fnames, batch_size):
 ##################### Manage callback classes
 # custom model checkpoint save callback
 class SaveWeight(Callback):
+	"""Callback class for Saving the trained weights."""
+
 	def __init__(self, ckpt_path, **kwargs):
 		super(SaveWeight, self).__init__(**kwargs)
 		self.ckpt_path = ckpt_path
@@ -114,6 +180,8 @@ class SaveWeight(Callback):
 
 # custom tensorboard callback
 class TrainValTensorBoard(TensorBoard):
+	"""Callback class for logging the train and validation data in one graph."""
+
 	def __init__(self, log_dir='./logs', **kwargs):
 		self.val_log_dir = join(log_dir, 'validation')
 		training_log_dir = join(log_dir, 'training')
@@ -152,6 +220,8 @@ class TrainValTensorBoard(TensorBoard):
 
 # custom learning rate scheduler callback
 class CustomLearningRateScheduler(LearningRateScheduler):
+	"""Callback class for updating the learning rate per batch."""
+
 	def __init__(self, schedule, verbose, LR_UPDATE_INTERVAL, LR_UPDATE_RATE, mode="iter"):
 		self.LR_UPDATE_INTERVAL = LR_UPDATE_INTERVAL
 		self.LR_UPDATE_RATE = LR_UPDATE_RATE
@@ -209,6 +279,17 @@ class CustomLearningRateScheduler(LearningRateScheduler):
 			logs['lr'] = K.get_value(self.model.optimizer.lr)
 
 def lr_scheduler(iteration, lr, LR_UPDATE_INTERVAL, LR_UPDATE_RATE):
+	"""Determine the next learning rate 
+
+   	# arguments
+   		iteration: the current number of batch already trained
+   		lr: current learning rate
+   		LR_UPDATE_INTERVAL: the batch_wise update interval 
+   		LR_UPDATE_RATE: the value which to be multiplied to the current learning rate
+
+	# Returns
+		The next learning rate
+	"""
 	if iteration % LR_UPDATE_INTERVAL == 0:
 		lr *= LR_UPDATE_RATE 
 	return lr
@@ -217,6 +298,8 @@ def lr_scheduler(iteration, lr, LR_UPDATE_INTERVAL, LR_UPDATE_RATE):
 
 # get weight callback
 class GetWeight(Callback):
+	"""Callback class for debugging the first layer weights by print."""
+
 	def __init__(self, **kwargs):
 		super(GetWeight, self).__init__(**kwargs)
 
@@ -225,8 +308,16 @@ class GetWeight(Callback):
 
 
 
-# Return callback classes
 def load_callbacks(args):
+	"""Return the callback list
+
+   	# arguments
+   		args: the object of parsed argparse
+
+	# Returns
+		A list of tf.keras.callbacks 
+	"""
+
 	LOG_PATH 			= args.log_path
 	METHOD 				= args.method
 	BATCH_SIZE 			= args.batch_size
@@ -279,6 +370,8 @@ def load_callbacks(args):
 ##################### Custom constraint objects
 # Custum constraint
 class CustomConstraint(constraints.Constraint):
+	"""Constraint class for first layer of Bayar network."""
+
 	def __init__(self, sum=1, center=-1, axis=None):
 		self.sum = sum
 		self.center = center
@@ -329,6 +422,18 @@ class CustomConstraint(constraints.Constraint):
 ##################### Network layer functions
 # weights
 def conv2D(filters, kernel_size, strides=(1,1), kernel_constraint=None):
+	"""2D convolution layer
+
+   	# arguments
+   		filters: the number of filters
+   		kernel_size: a tuple of kernel size
+   		strides: a tuple of strides
+   		kernel_constraint: the tf.keras.constraints object 
+
+	# Returns
+		A tf.keras.layers.Conv2D layer
+	"""
+
 	filters 			= int(SCALE * filters)
 	padding 			= 'same'
 	data_format 		= 'channels_last'
@@ -353,6 +458,17 @@ def conv2D(filters, kernel_size, strides=(1,1), kernel_constraint=None):
 						kernel_constraint=kernel_constraint)
 
 def dense(units, use_bias=True, activation=None):
+	"""Fully connected layer
+
+   	# arguments
+   		units: the number of output units
+   		use_bias: bool whether use bias term or not
+   		activation: the activation function after fully connected layer
+
+	# Returns
+		A tf.keras.layers.Dense layer
+	"""
+
 	activation 			= activation
 	use_bias			= use_bias
 	kernel_initializer 	= tf.keras.initializers.random_normal(mean=0, stddev=0.01)
@@ -371,20 +487,45 @@ def dense(units, use_bias=True, activation=None):
 
 # activations
 def relu():
+	"""ReLU activation function
+
+	# Returns
+		A tf.keras.activations.relu
+	"""
 
 	return activations.relu
 
 def softmax():
+	"""Softmax activation function
+
+	# Returns
+		A tf.keras.activations.softmax
+	"""
 
 	return activations.softmax
 
 def tanh():
+	"""Tanh activation function
+
+	# Returns
+		A tf.keras.activations.tanh
+	"""
 
 	return activations.tanh
 
 
 # pooling
 def maxPooling2D(pool_size, strides=(1,1)):
+	"""Max pooling layer
+
+   	# arguments
+   		pool_size: a tuple of pooling window
+   		strides: a tuple of strides
+
+	# Returns
+		A tf.keras.layers.MaxPooling2D 
+	"""
+
 	padding 	= 'same'
 
 	return layers.MaxPool2D(pool_size=pool_size, \
@@ -392,6 +533,16 @@ def maxPooling2D(pool_size, strides=(1,1)):
 							padding=padding)
 
 def averagePooling2D(pool_size, strides=(1,1)):
+	"""Average pooling layer
+
+   	# arguments
+   		pool_size: a tuple of pooling window
+   		strides: a tuple of strides
+
+	# Returns
+		A tf.keras.layers.AveragePooling2D 
+	"""
+
 	padding 	= 'same'
 	data_format = None
 
@@ -401,12 +552,23 @@ def averagePooling2D(pool_size, strides=(1,1)):
 									data_format=data_format)
 
 def globalAveragePooling2D():
-	data_format = None
-	return layers.GlobalAveragePooling2D(data_format=data_format)
+	"""Global average pooling layer
+
+	# Returns
+		A tf.keras.layers.GlobalAveragePooling2D 
+	"""
+
+	return layers.GlobalAveragePooling2D()
 
 
 # manipulation
 def batchNorm():
+	"""Batch normalization layer
+
+	# Returns
+		A tf.keras.layers.BatchNormalization
+	"""
+
 	axis 						= -1
 	momentum 					= 0.9
 	epsilon 					= 0.001
@@ -440,10 +602,24 @@ def batchNorm():
 									virtual_batch_size=virtual_batch_size)
 
 def flatten():
+	"""Flatten the 2D convolution layer into 1D units layer
+
+	# Returns
+		A tf.keras.layers.Faltten
+	"""
 
 	return layers.Flatten()
 
 def add(*args):
+	"""Add the arguments layers
+
+   	# arguments
+   		*args: the list of tf.keras.layers
+
+	# Returns
+		The graph of added layer
+	"""
+
 	return layers.Add()(*args)
 
 

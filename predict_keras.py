@@ -30,7 +30,7 @@ class Detector():
 		pass
 
 
-	def detect_frame(frame):
+	def detect_frame(self, frame):
 		"""Detect a framewise tampering
 
 	   	# arguments
@@ -45,7 +45,7 @@ class Detector():
 		return result_accuracy[0,1]
 
 
-	def is_original(data):
+	def is_original(self, data):
 		"""Determine the videowise tampering
 
 	   	# arguments
@@ -58,7 +58,7 @@ class Detector():
 		return False
 
 
-	def show_result(data):
+	def show_result(self, data):
 		"""Show the graph of predicted data visually
 
 	   	# arguments
@@ -70,7 +70,7 @@ class Detector():
 		plt.show()
 
 
-	def detect_video(video_name, is_show=False):
+	def detect_video(self, video_name, is_show=False):
 		"""Detect a videowise tampering
 
 	   	# arguments
@@ -92,18 +92,18 @@ class Detector():
 		# Predict the video retouch tampering
 		predicted_data = []
 		for idx, frame in enumerate(video):
-			result = detect_frame(frame)
+			result = self.detect_frame(frame)
 			predicted_data.append(result)
 
 			if is_show:
 				print("{}: {}".format(idx, result))
 			
 
-		prediction = is_original(predicted_data)
+		prediction = self.is_original(predicted_data)
 
 
 		if is_show:
-			show_result(predicted_data)
+			self.show_result(predicted_data)
 			print("Original: ", prediction)
 
 		return prediction, predicted_data
@@ -121,7 +121,7 @@ def main():
 	parser.add_argument('--regularizer', type=float, default=0.001, help='regularizer')
 	parser.add_argument('--batch_size', type=int, default=4, help='batch size')
 	parser.add_argument('--stack_size', type=int, default=1, help='stack size')
-	parser.add_argument('--checkpoint', type=str, default="./logs/20190901_020912_median_95/checkpoint/weights_29", help='checkpoint path')
+	parser.add_argument('--checkpoint', type=str, default="./logs/20190902_154638_noise_93/checkpoint/weights_29", help='checkpoint path')
 	args = parser.parse_args()
 
 	FILE_PATH 			= args.file_path
@@ -166,12 +166,12 @@ def main():
 
 		for idx, fname in enumerate(fnames):
 			print("*********************{}: {}".format(idx, fname))
-			prediction, predicted_data = detector.detect_video(model, fname, is_show=False)
+			prediction, predicted_data = detector.detect_video(fname, is_show=False)
 			total_result += predicted_data
 		print(np.mean(total_result))
 
 	else:
-		prediction, predicted_data = detector.detect_video(model, FILE_PATH, is_show=False)
+		prediction, predicted_data = detector.detect_video(FILE_PATH, is_show=True)
 		print(np.mean(predicted_data))
 
 	

@@ -12,31 +12,32 @@ def main():
 
 	# parse the arguments
 	parser = argparse.ArgumentParser(description='Process some integers.')
-	parser.add_argument('--src_path', type=str, default='./trainS_input', help='directory path')
-	parser.add_argument('--frac', type=float, default='1.0', help='attack frac')
+	parser.add_argument('--src_path', type=str, default='./trainS_input', help='source path')
+	parser.add_argument('--dst_path', type=str, default='./trainS_output', help='destination path')
+	parser.add_argument('--intensity', type=str, default='strong', help='strong or weak')
 	args = parser.parse_args()
 
 	# source directory validation check
 	src_path 	= args.src_path
-	frac  		= args.frac
-	original_path = join(src_path, "original")
-	if not isdir(original_path):
-		raise(BaseException("no such directory \"%s\"" % original_path))
+	dst_path 	= args.dst_path
+	intensity  	= args.intensity
 
 	# method validation check
-	methods = ["blur", "median", "noise", "resize"]
-	# methods = ["resize", "noise"]
+	bitrates = ["500k", "600k", "700k", "800k"]
+	methods = ["blur", "median", "noise"]
+	# methods = ["original"]
 
 	# set destination directory name
 	for method in methods:
-		try:
-			makedirs(join(src_path, method))
-			pass
-		except FileExistsError:
-			pass
+		for bitrate in bitrates:
+			try:
+				makedirs(join(dst_path, "retouch_"+intensity, method, bitrate))
+				pass
+			except FileExistsError:
+				pass
 
 	counter = 1
-	fnames = glob.glob(join(original_path, "*.mp4"))
+	fnames = glob.glob(join(src_path, "*k", "*.mp4"))
 	print("%8s| file name" % "counter")
 
 	# retouch video
@@ -51,17 +52,17 @@ def main():
 			continue
 
 		# parse bitrate from file name
-		bitrate = basename(fname).split("_")[4] + "k"
+		bitrate = fname.split("\\")[-2]
 
 		for method in methods:
 			# get manipulated frame 
 			for i in range(fn):
-			    vid_retouched[i,:,:,:] = manipulate(vid[i,:,:,:], method, k=5, frac=frac) # manipulate.py 참고
+			    vid_retouched[i,:,:,:] = manipulate(vid[i,:,:,:], method, intensity=intensity) # manipulate.py 참고
 
 			vid_retouched = vid_retouched.astype(np.uint8)
 
 			# set output file name
-			output_file = join(src_path, method, basename(fname))
+			output_file = join(dst_path, "retouch_"+intensity, method, bitrate, basename(fname))
 			print("%8d: %s" % (counter , output_file))
 			counter += 1
 			
@@ -73,12 +74,15 @@ def main():
 			# "-b:v = bitrate" 		: bitrate
 			# "-pix_fmt = yuv420p"	: color space
 			write_option = {'-vcodec': 'libx264', '-r': '30', '-g': '4', '-bf': '0', '-b:v': bitrate, '-pix_fmt': 'yuv420p'}
-			writer = vio.FFmpegWriter(filename=output_file, outputdict=write_option)
+			writer = vio.FFmpegWriter(filename=output_file, inputdict={'-r': '30'}, outputdict=write_option)
 			for i in range(fn):
 				writer.writeFrame(vid_retouched[i, :, :, :])
+			# writer.writeFrame(vid_retouched)
 			writer.close()
 
+	print("Process end on directory \"%s\"" % src_path)
 
+'''
 	# for debug
 	if False:
 		print(basename(output_file))
@@ -95,9 +99,9 @@ def main():
 			print(x)
 			for y in output_meta[x]:
 				print (y, ':', output_meta[x][y])
+'''
 
-
-	print("Process end on directory \"%s\"" % src_path)
+	
 
 	
 if __name__=="__main__":

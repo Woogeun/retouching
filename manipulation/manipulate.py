@@ -61,7 +61,7 @@ def jpeg_compression_byte(img,quality_factor):
     return bytesIO.getvalue(), np.array(jpeg_im, dtype='uint8')
 
 
-def manipulate(org_img,manipulate_type, k=5, frac=1.0):
+def manipulate(org_img, manipulate_type, intensity="strong"):
     """
     Manipulation Type
     {gaussBlur, median, blur, gaussNoise, histoEq, motionBlur, motionBlur2}
@@ -69,37 +69,44 @@ def manipulate(org_img,manipulate_type, k=5, frac=1.0):
     if manipulate_type == "blur":
         # 2-D Gaussian smoothing kernel: gaussian_filter(img, sigma=(n))
         #sigma = 1 + random.random()*2
-                sigma = 2 * frac
-                forged_img = cv2.GaussianBlur(org_img,(5,5),sigma)
-                #print ("apply gaussian blur (sigma=%.2f)" % sigma)
-                return np.array(forged_img, dtype='uint8')
+        if intensity == "strong":    
+            forged_img = cv2.GaussianBlur(org_img,(5,5),1)
+        elif intensity == "weak":
+            forged_img = cv2.GaussianBlur(org_img,(3,3),1)
+        
 
     elif manipulate_type == "median":
-        forged_img = cv2.medianBlur(org_img,k)
-        return np.array(forged_img, dtype='uint8')
+        if intensity == "strong":
+            forged_img = cv2.medianBlur(org_img,5)
+        elif intensity == "weak":
+            forged_img = cv2.medianBlur(org_img,3)
 
     elif manipulate_type == "noise":
+        if intensity == "strong":
+            sigma = 4
+        elif intensity == "weak":
+            sigma = 2
         [row, col, c] = org_img.shape
         mean = 0
-        sigma = 4 * frac
         gauss = np.random.normal(mean, sigma, (row, col, c))
         forged_img = org_img + gauss
-
         # delete 256+ and - values
         forged_img = delete_outrange(forged_img)
-        return np.array(forged_img, dtype='uint8')
 
     elif manipulate_type == "resize":
         [row, col, c] = org_img.shape
-        if frac == 1.0:
+        if intensity == "strong":
             fx = 1.5
             fy = 1.5
-        else:
+        elif intensity == "weak":
             fx = 1.2
             fy = 1.2
         forged_img = cv2.resize(org_img,None,fx=fx,fy=fy,interpolation=cv2.INTER_LINEAR)
         forged_img = forged_img[0:row,0:col,:]
 
+    elif manipulate_type == "original":
+        forged_img = org_img
+    
     return np.array(forged_img, dtype='uint8')
 
 

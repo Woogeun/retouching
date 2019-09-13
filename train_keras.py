@@ -111,7 +111,7 @@ def main():
 	model.compile(optimizer=optimizer, loss=loss, metrics=list(metrics.values()))
 	model.build(input_shape=(None,256,256,1))
 	model.summary()
-	model.load_weights("./logs/20190829_180354_noise_91/checkpoint/weights_29")
+	model.load_weights("./logs/20190902_154638_noise_93/checkpoint/weights_29")
 
 
 

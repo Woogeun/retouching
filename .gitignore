@@ -113,6 +113,7 @@ after.meta
 # video2tfrecord/
 retouch_tfrecord_train/
 retouch_tfrecord_test/
+tfrecord_retouch_strong/
 logs/
 *.png
 *.bat

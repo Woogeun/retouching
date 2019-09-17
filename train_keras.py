@@ -11,6 +11,7 @@ from glob import glob
 import tensorflow as tf
 from tensorflow.python import keras
 from keras import backend as K
+from sklearn.model_selection import train_test_split
 
 from network.Networks_structure_srnet_keras import SRNet 
 from network.Networks_structure_mislnet_keras import MISLNet
@@ -24,10 +25,11 @@ def main():
 
 	################################################## parse the arguments
 	parser = argparse.ArgumentParser(description='Train retouch detection network.')
-	parser.add_argument('--train_path', type=str, default='./retouch_tfrecord_train', help='train dataset path')
-	parser.add_argument('--test_path', type=str, default='./retouch_tfrecord_test', help='test dataset path')
+	# parser.add_argument('--train_path', type=str, default='./retouch_tfrecord_train', help='train dataset path')
+	# parser.add_argument('--test_path', type=str, default='./retouch_tfrecord_test', help='test dataset path')
+	parser.add_argument('--src_path', type=str, default='./tfrecord_retouch_strong', help='source path')
 	parser.add_argument('--fraction', type=float, default=0.2, help='fraction of validation dataset')
-	parser.add_argument('--method', type=str, default="*", help='attack method')
+	parser.add_argument('--method', type=str, default="multi", help='blur, median, noise or multi')
 	parser.add_argument('--br', type=str, default="*", help='bitrate')
 	parser.add_argument('--log_path', type=str, default='./logs', help='log path')
 	parser.add_argument('--batch_size', type=int, default=4, help='batch size')
@@ -38,16 +40,17 @@ def main():
 	parser.add_argument('--summary_interval', type=int, default=1, help='loss inverval')
 	parser.add_argument('--checkpoint_interval', type=int, default=1, help='checkpoint interval')
 	parser.add_argument('--start_lr', type=float, default=1e-03, help='start learning rate')
-	parser.add_argument('--lr_update_interval', type=int, default=18, help='learning rate update interval')
+	parser.add_argument('--lr_update_interval', type=int, default=1, help='learning rate update interval')
 	parser.add_argument('--lr_update_rate', type=float, default=0.9, help='learning rate update rate')
 	
 	args = parser.parse_args()
 
-	TRAIN_PATH 			= args.train_path
-	TEST_PATH 			= args.test_path
+	# TRAIN_PATH 			= args.train_path
+	# TEST_PATH 			= args.test_path
+	SRC_PATH 			= args.src_path
 	FRACTION 			= args.fraction
 	METHOD 				= args.method
-	BITRATE 			= args.br + "br"
+	BITRATE 			= args.br + "k"
 	LOG_PATH 			= args.log_path
 	BATCH_SIZE 			= args.batch_size
 	NETWORK 			= args.network
@@ -67,15 +70,9 @@ def main():
 
 	################################################## Setup the dataset
 	# Set train, validation, and test data
-	total_fnames 	= glob(join(TRAIN_PATH, METHOD, BITRATE, "*.tfrecord"))
-	# total_fnames = total_fnames[:int(len(total_fnames)/24)]
-	test_fnames 	= glob(join(TEST_PATH, METHOD, BITRATE, "*.tfrecord"))
-
-
-	# Split train datset and validation dataset
-	idx = int(len(total_fnames) * FRACTION)
-	valid_fnames 	= total_fnames[:idx]
-	train_fnames 	= total_fnames[idx:]
+	total_fnames = glob(join(SRC_PATH, METHOD, BITRATE, "*.tfrecord"))
+	train_fnames, test_fnames = train_test_split(total_fnames, test_size=0.2, random_state=123)
+	train_fnames, valid_fnames = train_test_split(train_fnames, test_size=FRACTION, random_state=321)
 
 
 	# Load data

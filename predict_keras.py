@@ -6,7 +6,7 @@ Video retouch detection prediction module
 
 import argparse
 from glob import glob
-from os import cpu_count
+from os import cpu_count, makedirs
 from os.path import join, isdir
 import random
 
@@ -25,9 +25,15 @@ from network.Networks_structure_mislnet_keras import MISLNet
 
 class Detector():
 	"""Class for the detecting whether the video is tampered or not."""
-	def __init__(self, model):
+	def __init__(self, model, dst_path):
 		self.model = model
-		pass
+		self.dst_path = dst_path
+
+		try:
+			makedirs(dst_path)
+		except:
+			pass
+
 
 
 	def detect_frame(self, frame):
@@ -56,18 +62,6 @@ class Detector():
 		"""
 		
 		return False
-
-
-	def show_result(self, data):
-		"""Show the graph of predicted data visually
-
-	   	# arguments
-	   		data: the list of the probability of frame can be tampered
-		"""
-
-		fn = range(len(data))
-		plt.plot(fn, data)
-		plt.show()
 
 
 	def detect_video(self, video_name, is_show=False):
@@ -99,11 +93,14 @@ class Detector():
 				print("{}: {}".format(idx, result))
 			
 
+		# Determine the prediction result(original or not) and save figure
 		prediction = self.is_original(predicted_data)
-
+		fn = range(len(data))
+		plt.plot(fn, data)
+		plt.savefig(join(self.dst_path, video_name.split('\\')[-1].split('.')[0] + 'png'))
 
 		if is_show:
-			self.show_result(predicted_data)
+			plt.show()
 			print("Original: ", prediction)
 
 		return prediction, predicted_data
@@ -113,25 +110,21 @@ class Detector():
 def main():
 	################################################## Parse the arguments
 	parser = argparse.ArgumentParser(description='Train retouch detection network.')
-	parser.add_argument('--file_path', type=str, default='../train_strong/median/', help='test file path')
+	parser.add_argument('--src_path', type=str, default='../train_strong/median/', help='test source path')
+	parser.add_argument('--dst_path', type=str, default='../train_strong/median/', help='image save destination path')
 	parser.add_argument('--num_test', type=int, default=100, help='number of test videos in test directory')
 	parser.add_argument('--method', type=str, default="blur", help='method')
 	parser.add_argument('--network', type=str, default="INPUT_NETWORK", help='SRNet or MISLNet or NamNet')
 	parser.add_argument('--network_scale', type=float, default=1.0, help='network scale')
-	parser.add_argument('--regularizer', type=float, default=0.001, help='regularizer')
-	parser.add_argument('--batch_size', type=int, default=4, help='batch size')
-	parser.add_argument('--stack_size', type=int, default=1, help='stack size')
 	parser.add_argument('--checkpoint', type=str, default="./logs/20190902_154638_noise_93/checkpoint/weights_29", help='checkpoint path')
 	args = parser.parse_args()
 
-	FILE_PATH 			= args.file_path
+	SRC_PATH 			= args.src_path
+	DST_PATH 			= args.dst_path
 	NUM_TEST 			= args.num_test
 	METHOD 				= args.method
 	NETWORK 			= args.network
 	SCALE 				= args.network_scale
-	REG 				= args.regularizer
-	BATCH_SIZE 			= args.batch_size
-	STACK_SIZE 			= args.stack_size
 	CHECKPOINT 			= args.checkpoint
 
 
@@ -156,11 +149,11 @@ def main():
 
 
 	################################################## Predict the data
-	detector = Detector(model)
+	detector = Detector(model, join(DST_PATH, METHOD))
 
-	if isdir(FILE_PATH):
+	if isdir(SRC_PATH):
 		total_result = []
-		fnames = glob(join(FILE_PATH, "*.mp4"))
+		fnames = glob(join(SRC_PATH, "*.mp4"))
 		random.shuffle(fnames)
 		fnames = fnames[:NUM_TEST]
 
@@ -171,7 +164,7 @@ def main():
 		print(np.mean(total_result))
 
 	else:
-		prediction, predicted_data = detector.detect_video(FILE_PATH, is_show=True)
+		prediction, predicted_data = detector.detect_video(SRC_PATH, is_show=True)
 		print(np.mean(predicted_data))
 
 	

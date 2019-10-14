@@ -13,7 +13,6 @@ from .Networks_functions_keras import *
 
 
 
-
 class Type1(Layer):
 	"""Layer class of SRNet type 1."""
 
@@ -99,7 +98,7 @@ class Type4(Layer):
 class SRNet(Model):
 	"""SRNet class."""
 
-	def __init__(self, scale=1.0, reg=0.001, **kwargs):
+	def __init__(self, scale=1.0, reg=0.001, num_class=2, **kwargs):
 		super(SRNet, self).__init__(**kwargs)
 		Networks_functions_keras.SCALE = scale
 		Networks_functions_keras.REG = reg
@@ -120,7 +119,7 @@ class SRNet(Model):
 
 		self.l12_t4 = Type4(512)
 
-		self.fc = dense(2, use_bias=False, activation='softmax')
+		self.fc = dense(num_class, use_bias=False, activation='softmax')
 
 	def call(self, inputs):
 		x = self.l1_t1(inputs)

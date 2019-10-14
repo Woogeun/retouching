@@ -39,15 +39,19 @@ class YUVReader():
 		self.num_frames = num_frames
 
 		
-	def clip_frame(self, frame, height, width):
-		cliped = []
-		for h in range(0, height, 256):
-			for w in range(0, width, 256):
-				cliped_frame = frame[h : h+256, w : w+256, :]
-				if cliped_frame.shape == (256,256,3):
-					cliped.append(cliped_frame)
+	def clip_frame(self, frame, height, width, flag=True):
+		if flag:
+			cliped = []
+			for h in range(0, height, 256):
+				for w in range(0, width, 256):
+					cliped_frame = frame[h : h+256, w : w+256, :]
+					if cliped_frame.shape == (256,256,3):
+						cliped.append(cliped_frame)
 
-		return len(cliped), np.array(cliped)
+			return len(cliped), np.array(cliped)
+
+		else:
+			return 1, np.array(frame)
 
 
 
@@ -70,6 +74,9 @@ class YUVReader():
 		elif vtype == "XIPH2":
 			height = 1080
 			width = 1920
+		elif vtype == "MCML":
+			height = 2160
+			width = 3840
 
 		cliped_Frames = []
 		num_clips = 0
@@ -93,7 +100,7 @@ class YUVReader():
 
 
 				# Divide large size frame into 256x256 size video
-				num_clips, clips = self.clip_frame(RGB, height, width)
+				num_clips, clips = self.clip_frame(RGB, height, width, flag=False)
 				cliped_Frames.append(clips)
 
 
@@ -129,18 +136,19 @@ def main():
 
 	# # parse the arguments
 	parser = argparse.ArgumentParser(description='YUV video to mp4 video')
-	parser.add_argument('--src_path', type=str, default='E:\\YUV_RAWVIDEO/XIPH2/BigBuckBunny_25fps.yuv', help='source path')
-	parser.add_argument('--dst_path', type=str, default='./original', help='destination path')
+	parser.add_argument('--src_path', type=str, default='E:\\YUV_RAWVIDEO', help='source path')
+	parser.add_argument('--dst_path', type=str, default='E:\\YUV_RAWVIDEO/5kVideos', help='destination path')
 	args = parser.parse_args()
 
 	src_path 	= args.src_path
 	dst_path 	= args.dst_path
 
 	yuvReader = YUVReader()
-	vtypes = ["MCLV", "MVQP", "XIPH2"]
+	# vtypes = ["MCLV", "MVQP", "XIPH2"]
 	# vtypes = ["XIPH2"]
 	# vtypes = ["MCLV"]
 	# vtypes = ["MVQP"]
+	vtypes = ["MCML"]
 
 
 	for vtype in vtypes:

@@ -107,7 +107,7 @@ class Type4(Layer):
 class NamNet(Model):
 	"""NamNet class."""
 
-	def __init__(self, scale=1.0, reg=0.001, **kwargs):
+	def __init__(self, scale=1.0, reg=0.001, num_class=2, **kwargs):
 		super(NamNet, self).__init__(**kwargs)
 		Networks_functions_keras.SCALE = scale
 		Networks_functions_keras.REG = reg

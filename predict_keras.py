@@ -95,48 +95,48 @@ class Detector():
 
 		# Determine the prediction result(original or not) and save figure
 		prediction = self.is_original(predicted_data)
-		fn = range(len(data))
-		plt.plot(fn, data)
-		plt.savefig(join(self.dst_path, video_name.split('\\')[-1].split('.')[0] + 'png'))
+		fn = range(len(predicted_data))
+		plt.plot(fn, predicted_data)
+		# plt.savefig(join(self.dst_path, video_name.split('\\')[-1].split('.')[0] + 'png'))
 
 		if is_show:
 			plt.show()
 			print("Original: ", prediction)
 
-		return prediction, predicted_data
+		plt.clf()
+
+		return predicted_data
 
 
 
 def main():
 	################################################## Parse the arguments
 	parser = argparse.ArgumentParser(description='Train retouch detection network.')
-	parser.add_argument('--src_path', type=str, default='../train_strong/median/', help='test source path')
+	parser.add_argument('--src_path', type=str, default='./samples/blur', help='test source path')
 	parser.add_argument('--dst_path', type=str, default='../train_strong/median/', help='image save destination path')
-	parser.add_argument('--num_test', type=int, default=100, help='number of test videos in test directory')
-	parser.add_argument('--method', type=str, default="blur", help='method')
-	parser.add_argument('--network', type=str, default="INPUT_NETWORK", help='SRNet or MISLNet or NamNet')
-	parser.add_argument('--network_scale', type=float, default=1.0, help='network scale')
-	parser.add_argument('--checkpoint', type=str, default="./logs/20190902_154638_noise_93/checkpoint/weights_29", help='checkpoint path')
+	# parser.add_argument('--num_test', type=int, default=100, help='number of test videos in test directory')
+	parser.add_argument('--network', type=str, default="SRNet", help='SRNet or MISLNet or NamNet')
+	parser.add_argument('--network_scale', type=float, default=0.5, help='network scale')
+	parser.add_argument('--checkpoint', type=str, default="20190914_092006_blur_98", help='checkpoint path')
 	args = parser.parse_args()
 
 	SRC_PATH 			= args.src_path
 	DST_PATH 			= args.dst_path
-	NUM_TEST 			= args.num_test
-	METHOD 				= args.method
+	# NUM_TEST 			= args.num_test
 	NETWORK 			= args.network
 	SCALE 				= args.network_scale
-	CHECKPOINT 			= args.checkpoint
+	CHECKPOINT 			= join('./logs', args.checkpoint, 'checkpoint', 'weights_29')
 
 
 
 	################################################## Load checkpoint file
 	# load model
 	if NETWORK == 'SRNet':
-		model = SRNet(SCALE, REG)
+		model = SRNet(SCALE)
 	elif NETWORK == 'MISLNet':
-		model = MISLNet(SCALE, REG)
+		model = MISLNet(SCALE)
 	elif NETWORK == "NamNet":
-		model = NamNet(SCALE, REG)
+		model = NamNet(SCALE)
 	else:
 		raise(BaseException("No such network: {}".format(NETWORK)))
 
@@ -149,23 +149,20 @@ def main():
 
 
 	################################################## Predict the data
-	detector = Detector(model, join(DST_PATH, METHOD))
+	detector = Detector(model, DST_PATH)
 
 	if isdir(SRC_PATH):
-		total_result = []
 		fnames = glob(join(SRC_PATH, "*.mp4"))
-		random.shuffle(fnames)
-		fnames = fnames[:NUM_TEST]
+		# random.shuffle(fnames)
+		# fnames = fnames[:NUM_TEST]
 
 		for idx, fname in enumerate(fnames):
 			print("*********************{}: {}".format(idx, fname))
-			prediction, predicted_data = detector.detect_video(fname, is_show=False)
-			total_result += predicted_data
-		print(np.mean(total_result))
+			predicted_data = detector.detect_video(fname, is_show=False)
+			print(sum(predicted_data) / len(predicted_data))
 
 	else:
-		prediction, predicted_data = detector.detect_video(SRC_PATH, is_show=True)
-		print(np.mean(predicted_data))
+		predicted_data = detector.detect_video(SRC_PATH, is_show=True)
 
 	
 

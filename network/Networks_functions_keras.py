@@ -8,14 +8,18 @@ import random
 from datetime import datetime
 from os import makedirs, cpu_count
 from os.path import join
+from math import sqrt, pi, cos
 
 import numpy as np
 
 import tensorflow as tf
+from tensorflow.python.ops import math_ops
 from tensorflow.python.eager import context
 from tensorflow.python.keras import backend as K
-from tensorflow.python.keras import layers, activations
+from tensorflow.python.keras import activations
+from tensorflow.python.keras.layers import *
 from tensorflow.python.keras.constraints import Constraint
+from tensorflow.python.keras.metrics import Metric
 from tensorflow.python.keras.callbacks import Callback, ModelCheckpoint, TensorBoard, LearningRateScheduler, EarlyStopping
 
 
@@ -26,6 +30,8 @@ from tensorflow.python.keras.callbacks import Callback, ModelCheckpoint, TensorB
 # It can be set manually via `Networks_functions_keras.SCALE = 0.5`.
 SCALE = 1.0
 REG = 0.001
+NUM_CLASS = 2
+COLOR = False
 
 
 ##################### Simple helper functions
@@ -132,14 +138,14 @@ def _parse_function(example_proto):
 	features = tf.parse_single_example(example_proto, feature_description)
 
 	frames = _bytes_to_array(features, 'frames', tf.uint8, [256, 256, 3])
-	frames = tf.image.rgb_to_grayscale(frames)
-	label = _bytes_to_array(features, 'label', tf.uint8, [2])
+	if not COLOR: frames = tf.image.rgb_to_grayscale(frames)
+	label = _bytes_to_array(features, 'label', tf.uint8, [NUM_CLASS])
 
 	# return frames, label, br
 	return frames, label
 
 
-def configure_dataset(fnames, batch_size):
+def configure_dataset(fnames, batch_size, is_color=False, shuffle=True):
 	"""Configure the dataset 
 
    	# arguments
@@ -150,14 +156,18 @@ def configure_dataset(fnames, batch_size):
 		A dataset object configured by batch size
 	"""
 
-	random.shuffle(fnames)
+	if is_color:
+		global COLOR
+		COLOR = True
+
+	if shuffle: random.shuffle(fnames)
 	buffer_size = max(len(fnames) / batch_size, 16) # recommend buffer_size = # of elements / batches
 	buffer_size = tf.cast(buffer_size, tf.int64)
 
 	dataset = tf.data.TFRecordDataset(fnames)
 	dataset = dataset.map(_parse_function, num_parallel_calls=cpu_count())
 	dataset = dataset.prefetch(buffer_size=buffer_size) 
-	dataset = dataset.shuffle(buffer_size=buffer_size, reshuffle_each_iteration=True) 
+	if shuffle: dataset = dataset.shuffle(buffer_size=buffer_size, reshuffle_each_iteration=True) 
 	dataset = dataset.repeat()
 	dataset = dataset.batch(batch_size)
 
@@ -306,7 +316,6 @@ class GetWeight(Callback):
 		print(self.model.layers[0].get_weights()[0])
 
 
-
 def load_callbacks(args):
 	"""Return the callback list
 
@@ -418,6 +427,43 @@ class CustomConstraint(Constraint):
 
 
 
+##################### Custom metric objects
+# Custum metric
+class ConfusionMatrix(Metric):
+
+	def __init__(self, name, **kwargs):
+		super(ConfusionMatrix, self).__init__(name=name, num_class=2, **kwargs)
+		self.confusion_matrix = self.add_weight(name='confusion_matrix', shape=(num_class, num_class), initializer='zeros')
+
+	def update_state(self, y_true, y_pred, sample_weight=None):
+		# self.confusion_matrix.assign_add(tf.ones((4,4)))
+		# add = K.update_add(self.confusion_matrix, tf.ones((4,4)))
+		y_true = tf.argmax(y_true, -1)[0]
+		y_pred = tf.argmax(y_pred, -1)[0]
+		
+		operand = K.zeros_like(self.confusion_matrix)
+		operand = operand.assign(K.zeros_like(self.confusion_matrix)[y_true, y_pred].assign(1.0))
+		
+		add = K.update_add(self.confusion_matrix, operand)
+		
+		# print1 = K.print_tensor(y_true, 'y_true: ')
+		# print2 = K.print_tensor(y_pred, 'y_pred: ')
+		# print3 = K.print_tensor(operand, 'operand: ')
+		# print4 = K.print_tensor(self.confusion_matrix, 'confusion matrix: ')
+		# ops = tf.group(add, print1, print2, print3, print4)
+		ops = tf.group(add, print4)
+
+		return ops
+
+	def result(self):
+		return tf.reduce_sum(self.confusion_matrix)
+
+	def reset_states(self):
+		# initial_matrix = tf.zeros((4,4))
+		self.confusion_matrix.assign(K.zeros_like(self.confusion_matrix))
+
+
+
 ##################### Network layer functions
 # weights
 def conv2D(filters, kernel_size, strides=(1,1), kernel_constraint=None):
@@ -443,18 +489,54 @@ def conv2D(filters, kernel_size, strides=(1,1), kernel_constraint=None):
 	kernel_regularizer 	= tf.keras.regularizers.l2(l=REG)
 	bias_regularizer 	= None
 
-	return layers.Conv2D(filters=filters, \
-						kernel_size=kernel_size, \
-						strides=strides, \
-						padding=padding, \
-						data_format=data_format, \
-						activation=activation, \
-						use_bias=use_bias, \
-						kernel_initializer=kernel_initializer, \
-						bias_initializer=bias_initializer, \
-						kernel_regularizer=kernel_regularizer, \
-						bias_regularizer=bias_regularizer,
-						kernel_constraint=kernel_constraint)
+	return Conv2D(	filters=filters, \
+					kernel_size=kernel_size, \
+					strides=strides, \
+					padding=padding, \
+					data_format=data_format, \
+					activation=activation, \
+					use_bias=use_bias, \
+					kernel_initializer=kernel_initializer, \
+					bias_initializer=bias_initializer, \
+					kernel_regularizer=kernel_regularizer, \
+					bias_regularizer=bias_regularizer,
+					kernel_constraint=kernel_constraint)
+
+def conv2D_(filters, kernel_size, strides=(1,1), kernel_constraint=None):
+	"""2D convolution layer that doesn`t change the number of filters by SCALE factor
+
+   	# arguments
+   		filters: the number of filters
+   		kernel_size: a tuple of kernel size
+   		strides: a tuple of strides
+   		kernel_constraint: the tf.keras.constraints object 
+
+	# Returns
+		A tf.keras.layers.Conv2D layer
+	"""
+
+	filters 			= filters
+	padding 			= 'same'
+	data_format 		= 'channels_last'
+	activation 			= None
+	use_bias 			= True
+	kernel_initializer 	= tf.keras.initializers.he_normal()
+	bias_initializer 	= tf.keras.initializers.constant(value=0.2)
+	kernel_regularizer 	= tf.keras.regularizers.l2(l=REG)
+	bias_regularizer 	= None
+
+	return Conv2D(	filters=filters, \
+					kernel_size=kernel_size, \
+					strides=strides, \
+					padding=padding, \
+					data_format=data_format, \
+					activation=activation, \
+					use_bias=use_bias, \
+					kernel_initializer=kernel_initializer, \
+					bias_initializer=bias_initializer, \
+					kernel_regularizer=kernel_regularizer, \
+					bias_regularizer=bias_regularizer,
+					kernel_constraint=kernel_constraint)
 
 def dense(units, use_bias=True, activation=None):
 	"""Fully connected layer
@@ -475,13 +557,13 @@ def dense(units, use_bias=True, activation=None):
 	kernel_regularizer 	= None
 	bias_regularizer 	= None
 
-	return layers.Dense(units=units, \
-						activation=activation, \
-						use_bias=use_bias, \
-						kernel_initializer=kernel_initializer, \
-						bias_initializer=bias_initializer, \
-						kernel_regularizer=kernel_regularizer, \
-						bias_regularizer=bias_regularizer)
+	return Dense(	units=units, \
+					activation=activation, \
+					use_bias=use_bias, \
+					kernel_initializer=kernel_initializer, \
+					bias_initializer=bias_initializer, \
+					kernel_regularizer=kernel_regularizer, \
+					bias_regularizer=bias_regularizer)
 
 
 # activations
@@ -512,6 +594,15 @@ def tanh():
 
 	return activations.tanh
 
+def sigmoid():
+	"""Sigmoid activation function
+
+	# Returns
+		A tf.keras.activations.sigmoid
+	"""
+
+	return activations.sigmoid
+
 
 # pooling
 def maxPooling2D(pool_size, strides=(1,1)):
@@ -527,9 +618,9 @@ def maxPooling2D(pool_size, strides=(1,1)):
 
 	padding 	= 'same'
 
-	return layers.MaxPool2D(pool_size=pool_size, \
-							strides=strides, \
-							padding=padding)
+	return MaxPool2D(	pool_size=pool_size, \
+						strides=strides, \
+						padding=padding)
 
 def averagePooling2D(pool_size, strides=(1,1)):
 	"""Average pooling layer
@@ -545,10 +636,10 @@ def averagePooling2D(pool_size, strides=(1,1)):
 	padding 	= 'same'
 	data_format = None
 
-	return layers.AveragePooling2D(	pool_size=pool_size, \
-									strides=strides, \
-									padding=padding, \
-									data_format=data_format)
+	return AveragePooling2D(pool_size=pool_size, \
+							strides=strides, \
+							padding=padding, \
+							data_format=data_format)
 
 def globalAveragePooling2D():
 	"""Global average pooling layer
@@ -557,7 +648,7 @@ def globalAveragePooling2D():
 		A tf.keras.layers.GlobalAveragePooling2D 
 	"""
 
-	return layers.GlobalAveragePooling2D()
+	return GlobalAveragePooling2D()
 
 
 # manipulation
@@ -584,21 +675,21 @@ def batchNorm():
 	trainable 					= True
 	virtual_batch_size 			= None
 
-	return layers.BatchNormalization(axis=-axis, \
-									momentum=momentum, \
-									epsilon=epsilon, \
-									center=center, \
-									scale=scale, \
-									beta_initializer=beta_initializer, \
-									gamma_initializer=gamma_initializer, \
-									moving_mean_initializer=moving_mean_initializer, \
-									moving_variance_initializer=moving_variance_initializer, \
-									beta_regularizer=beta_regularizer, \
-									gamma_regularizer=gamma_regularizer, \
-									beta_constraint=beta_constraint, \
-									gamma_constraint=gamma_constraint, \
-									trainable=trainable, \
-									virtual_batch_size=virtual_batch_size)
+	return BatchNormalization(	axis=-axis, \
+								momentum=momentum, \
+								epsilon=epsilon, \
+								center=center, \
+								scale=scale, \
+								beta_initializer=beta_initializer, \
+								gamma_initializer=gamma_initializer, \
+								moving_mean_initializer=moving_mean_initializer, \
+								moving_variance_initializer=moving_variance_initializer, \
+								beta_regularizer=beta_regularizer, \
+								gamma_regularizer=gamma_regularizer, \
+								beta_constraint=beta_constraint, \
+								gamma_constraint=gamma_constraint, \
+								trainable=trainable, \
+								virtual_batch_size=virtual_batch_size)
 
 def flatten():
 	"""Flatten the 2D convolution layer into 1D units layer
@@ -607,7 +698,16 @@ def flatten():
 		A tf.keras.layers.Faltten
 	"""
 
-	return layers.Flatten()
+	return Flatten()
+
+def concatenate():
+	"""Concatenate input tensors
+
+	# Returns
+		A tf.keras.layers.Concatenate
+	"""
+
+	return Concatenate()
 
 def add(*args):
 	"""Add the arguments layers
@@ -619,10 +719,45 @@ def add(*args):
 		The graph of added layer
 	"""
 
-	return layers.Add()(*args)
+	return Add()(*args)
+
+def dropout(rate):
+	"""drouput layer
+
+	# Returns
+		A tf.keras.layers.Faltten
+	"""
+
+	return Dropout(rate)
 
 
+#caclulate DCT basis
+def cal_scale(p,q): #for 8x8 dct
+	if p==0:
+		ap = 1/(sqrt(8))
+	else:
+		ap = sqrt(0.25) #0.25 = 2/8
+	if q==0:
+		aq = 1/(sqrt(8))
+	else:
+		aq = sqrt(0.25) #0.25 = 2/8
+	return ap,aq
 
+def cal_basis(p,q): #for 8x8 dct
+	basis = np.zeros((8,8))
+	ap,aq = cal_scale(p,q)
+	for m in range(0,8):
+		for n in range(0,8):
+			basis[m,n] = ap*aq*cos(pi*(2*m+1)*p/16)*cos(pi*(2*n+1)*q/16)
+	return basis
 
+def load_DCT_basis_64(): #for 8x8 dct
+	basis_64 = np.zeros((8,8,1,64))
+	idx = 0
+	for i in range(8):
+		for j in range(8):
+			basis_64[:,:,0,idx] = cal_basis(i,j)
+			idx = idx + 1
+	return tf.constant(basis_64.tolist())
 
 

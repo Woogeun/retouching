@@ -11,7 +11,7 @@ import numpy as np
 def main():
 
 	# parse the arguments
-	parser = argparse.ArgumentParser(description='Process some integers.')
+	parser = argparse.ArgumentParser(description='Retouch video.')
 	parser.add_argument('--src_path', type=str, default='./trainS_input', help='source path')
 	parser.add_argument('--dst_path', type=str, default='./trainS_output', help='destination path')
 	parser.add_argument('--intensity', type=str, default='strong', help='strong or weak')

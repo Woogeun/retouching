@@ -46,6 +46,15 @@ def file_name_br(fname):
     return video_name, br
 
 
+def extract_information(bundle, stack_per_video, stack_size):
+    for sample in bundle:
+        video_name, br = file_name_br(sample)
+        with imageio.get_reader(sample, 'ffmpeg') as video:
+            video_len = video.count_frames()
+            frame_nums = random.sample(range(0, video_len - stack_size), stack_per_video)
+        return video_name, br, frame_nums
+
+
 def file_method_label(fname):
     # classify the label vector dimension by number of class
     method = fname.split("\\")[-3]
@@ -70,27 +79,26 @@ def file_method_label(fname):
 
 
 def video_read(bundle, output_dir, stack_per_video, stack_size):
+    METHOD, _ = file_method_label(bundle[1])
+
     # input video placeholder
     video_bundle = {fname: np.zeros([stack_per_video, stack_size, 256, 256, 3], dtype=np.uint8) for fname in bundle}
     
+
     # Extract video name and bitrate
-    for video_sample in bundle:
-        video_name, br = file_name_br(video_sample)
-        break
+    video_name, br, frame_nums = extract_information(bundle, stack_per_video,stack_size)
+    
 
     # read and store decoded video
     for fname, buffers in video_bundle.items():
         with imageio.get_reader(fname, 'ffmpeg') as video:
-            video_len = video.count_frames()
-            frame_nums = random.sample(range(0, video_len - stack_size), stack_per_video)
-
             for frame_idx, frame_num in enumerate(frame_nums):
                 buffers[frame_idx] = (np.array([video.get_data(frame_num + idx) for idx in range(stack_size)]))
 
 
     # Write the record
     for frame_num in range(stack_per_video):
-        tfrecord_name = join(output_dir, br, "{}_{}.tfrecord").format(video_name, str(frame_num))
+        tfrecord_name = join(output_dir, br, "{}_{}_{}.tfrecord").format(video_name, METHOD, str(frame_num))
         print(tfrecord_name)
         with tf.python_io.TFRecordWriter(tfrecord_name) as writer:
             for fname, buffers in video_bundle.items():
@@ -113,11 +121,11 @@ def video_read(bundle, output_dir, stack_per_video, stack_size):
 def build_tfrecord():
 
     parser = argparse.ArgumentParser(description='make tfrecord.')
-    parser.add_argument('--src_path', type=str, default='./train_strong', help='source path')
-    parser.add_argument('--dst_path', type=str, default='./retouch_train_strong', help='dst path')
+    parser.add_argument('--src_path', type=str, default='./retouch_strong', help='source path')
+    parser.add_argument('--dst_path', type=str, default='./tfrecord_retouch_strong', help='dst path')
     parser.add_argument('--stack_per_video', type=int, default=16, help='number of stack in one video')
     parser.add_argument('--stack_size', type=int, default=1, help='size of stack')
-    parser.add_argument('--attack', type=str, default='blur', help='blur, median, noise or multi')
+    parser.add_argument('--attack', type=str, default='multi', help='blur, median, noise or multi')
     args = parser.parse_args()
 
 
@@ -133,9 +141,9 @@ def build_tfrecord():
     dst_path = join(dst_path, attack) # E:\paired_minibatch\tfrecord_retouch_strong\some_attack
 
     if attack != "multi":
-        methods = [attack, "original"]
+        methods = [attack]
     else:
-        methods = ["blur", "median", "noise", "original"]
+        methods = ["blur", "median", "noise"]
     bitrates = ["500k","600k","700k","800k"]
 
 
@@ -150,27 +158,22 @@ def build_tfrecord():
     original_fnames = glob(join(src_path, "original", "*", "*.mp4"))
 
     fnames = []
-    while original_fnames:
-        # print(len(original_fnames))
-        br, name = name_split(original_fnames[0])
-        bundle = []
+    for original_fname in original_fnames:
+        br, name = name_split(original_fname)
         for method in methods:
-            bundle += glob(join(src_path, method, br, name))
+            retouched = glob(join(src_path, method, br, name))
+            assert(len(retouched) == 1)
+            fnames.append((original_fname, retouched[0]))
 
-        fnames.append(bundle)
-
-        # print(join(src_path, "original", br, name))
-        original_fnames.remove(join(src_path, "original", br, name))
-
-
+    print_list(fnames)
 
     # Record
-    Parallel(n_jobs=cpu_count())(delayed(video_read)\
-        (fname, dst_path, stack_per_video, stack_size) \
-            for fname in fnames)
+    # Parallel(n_jobs=cpu_count())(delayed(video_read)\
+    #     (bundle, dst_path, stack_per_video, stack_size) \
+    #         for bundle in fnames)
 
-    # for fname in fnames:
-    #     video_read(fname, dst_path, stack_per_video, stack_size)
+    # for bundle in fnames:
+    #     video_read(bundle, dst_path, stack_per_video, stack_size)
 
     print("End processing on directory\"{}\"".format(src_path))
 

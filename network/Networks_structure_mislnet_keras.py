@@ -28,72 +28,57 @@ class ConstrainedLayer(Layer):
 		return x
 
 
+class ConvBlock(Layer):
+	"""Conv, batchNorm, max pooling block class."""
+	def __init__(self, filters, kernel_size, strides, **kwargs):
+		super(ConvBlock, self).__init__(**kwargs)
+		self.conv = conv2D(filters, kernel_size, strides)
+		self.batchNorm = batchNorm()
+		self.tanh = tanh()
+		self.maxPooling = maxPooling2D((3,3), (2,2))
+
+	def __call__(self, inputs):
+		x = self.conv(inputs)
+		x = self.batchNorm(x)
+		x = self.tanh(x)
+		x = self.maxPooling(x)
+
+		return x
+
 
 class MISLNet(Model):
 	"""MISLNet class."""
 
-	def __init__(self, scale=1.0, reg=0.001, **kwargs):
+	def __init__(self, scale=1.0, reg=0.001, num_class=2, **kwargs):
 		super(MISLNet, self).__init__(**kwargs)
 		Networks_functions_keras.SCALE = scale
 		Networks_functions_keras.REG = reg
 
 		# prediction error feature extraction
-		self.conv1 			= ConstrainedLayer(3, (5,5), (1,1))
+		self.conv 	= ConstrainedLayer(3, (5,5), (1,1))
 
 
 		# hierarchical feature extraction
-		self.conv2 			= conv2D(96, (7,7), (2,2))
-		self.batchNorm2 	= batchNorm()
-		self.tanh2 			= tanh()
-		self.maxPooling2 	= maxPooling2D((3,3), (2,2))
-
-		self.conv3 			= conv2D(64, (5,5), (1,1))
-		self.batchNorm3 	= batchNorm()
-		self.tanh3 			= tanh()
-		self.maxPooling3 	= maxPooling2D((3,3), (2,2))
-
-		self.conv4 			= conv2D(64, (5,5), (1,1))
-		self.batchNorm4 	= batchNorm()
-		self.tanh4 			= tanh()
-		self.maxPooling4 	= maxPooling2D((3,3), (2,2))
-
-
-		# cross feature maps learning
-		self.conv5 			= conv2D(128, (1,1), (1,1))
-		self.batchNorm5 	= batchNorm()
-		self.tanh5 			= tanh()
-		self.averagePooling5 = averagePooling2D((3,3), (2,2))
+		self.block1 = ConvBlock(96, (7,7), (2,2))
+		self.block2 = ConvBlock(64, (5,5), (2,2))
+		self.block3 = ConvBlock(64, (5,5), (2,2))
+		self.block4 = ConvBlock(128, (1,1), (1,1))
 
 
 		# classification
 		self.flatten 	= flatten()
 		self.fc1 		= dense(200, use_bias=False, activation='tanh')
 		self.fc2 		= dense(200, use_bias=False, activation='tanh')
-		self.fc3 		= dense(2, use_bias=False, activation='softmax')
+		self.fc3 		= dense(num_class, use_bias=False, activation='softmax')
 
 
 	def call(self, inputs):
-		x = self.conv1(inputs)
+		x = self.conv(inputs)
 		
-		x = self.conv2(x)
-		x = self.batchNorm2(x)
-		x = self.tanh2(x)
-		x = self.maxPooling2(x)
-
-		x = self.conv3(x)
-		x = self.batchNorm3(x)
-		x = self.tanh3(x)
-		x = self.maxPooling3(x)
-
-		x = self.conv4(x)
-		x = self.batchNorm4(x)
-		x = self.tanh4(x)
-		x = self.maxPooling4(x)
-
-		x = self.conv5(x)
-		x = self.batchNorm5(x)
-		x = self.tanh5(x)
-		x = self.averagePooling5(x)
+		x = self.block1(x)
+		x = self.block2(x)
+		x = self.block3(x)
+		x = self.block4(x)
 
 		x = self.flatten(x)
 		x = self.fc1(x)

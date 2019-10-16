@@ -70,15 +70,16 @@ def load_cktp(model, cktp_path):
 def main():
 	################################################## Parse the arguments
 	parser = argparse.ArgumentParser(description='Train retouch detection network.')
-	parser.add_argument('--src_path', type=str, default='E:\\paired_minibatch', help='test source path')
+	parser.add_argument('--src_path', type=str, 			default='E:\\paired_minibatch', help='test source path')
 	parser.add_argument('--train_path', type=str, 			default='./train_*.txt', help='source path')
 	parser.add_argument('--test_path', type=str, 			default='./test_*.txt', help='source path')
 	parser.add_argument('--validation_path', type=str, 		default='./validation_*.txt', help='source path')
+	parser.add_argument('--alpha', type=float, 				default=0.5, help='alpha')
 
 	parser.add_argument('--fraction', type=int, default=0.1, help='number of test videos in test directory')
 	parser.add_argument('--network', type=str, default="SRNet", help='SRNet or MISLNet or NamNet or MMCNet or DCTNet or MesoNet')
 	parser.add_argument('--network_scale', type=float, default=1.0, help='network scale')
-	parser.add_argument('--method', type=str, default='multi', help='blur, median, or multi')
+	parser.add_argument('--method', type=str, default='noise', help='original, blur, median')
 	parser.add_argument('--regularizer', type=float, default=0.0001, help='regularizer')
 	parser.add_argument('--start_lr', type=float, default=1e-04, help='start learning rate')
 	parser.add_argument('--batch_size', type=int, default=32, help='batch size')
@@ -89,6 +90,7 @@ def main():
 	TRAIN_PATH 			= args.train_path
 	TEST_PATH 			= args.test_path
 	VALIDATION_PATH 	= args.validation_path
+	ALPHA 				= args.alpha
 
 	FRACTION 			= args.fraction
 	NETWORK 			= args.network
@@ -100,6 +102,38 @@ def main():
 	BATCH_SIZE 			= args.batch_size
 
 
+	################################################## Extract class index
+	label 			= np.load('./fusion/label_test.npy')
+	result_SRNet 	= np.load('./fusion/result_test_SRNet.npy')
+	result_DCTNet 	= np.load('./fusion/result_test_DCTNet.npy')
+	index 			= np.load('./fusion/{}_index_test.npy'.format(METHOD))
+	
+	# print(label.shape, result_SRNet.shape, result_DCTNet.shape, index.shape)
+
+	total = 0
+	original = 0
+	blur = 0
+	median = 0
+	noise = 0
+
+	for i in range(index.shape[0]):
+		if index[i] == 1:
+			result_ = result_SRNet[i] * ALPHA + result_DCTNet[i] * (1 - ALPHA)
+			result = np.argmax(result_, axis=-1)
+			if result == 0: original += 1
+			elif result == 1: blur += 1
+			elif result == 2: median += 1
+			elif result == 3: noise += 1
+			else: raise(BaseException("wtf is that: {}".format(result)))
+			total += 1
+
+	assert(total == original + blur + median + noise)
+	print("alpha: {}".format(ALPHA))
+	print("{} total: {}".format(METHOD, total))
+	print("original: %.2f%%, blur: %.2f%%, median: %.2f%%, noise: %.2f%%" % (100*(original/total), 100*(blur/total), 100*(median/total), 100*(noise/total)))
+
+	
+'''
 	################################################## Load the test files
 	train_fnames = txt2list(glob(TRAIN_PATH))
 	test_fnames = txt2list(glob(TEST_PATH))
@@ -113,7 +147,6 @@ def main():
 
 
 	################################################## Setup the training options
-	################################################## Setup the training options
 	# Load model
 	model = load_model(NETWORK, SCALE, METHOD)
 
@@ -126,7 +159,7 @@ def main():
 	################################################## Test the model
 	STEPS_TEST = len(test_fnames) * 2 // BATCH_SIZE
 	result = model.evaluate(test_dataset, steps=STEPS_TEST, verbose=1)
-
+'''
 
 
 

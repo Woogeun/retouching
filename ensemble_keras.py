@@ -24,8 +24,8 @@ from network.Networks_structure_srnet_keras import SRNet
 from network.Networks_structure_mislnet_keras import MISLNet
 from network.Networks_structure_dctnet_keras import DCTNet
 
-
-
+tf.enable_eager_execution()
+Networks_functions_keras.NUM_CLASS= 4
 def load_model(model_name, SCALE, METHOD):
 	NUM_CLASS = 4 if METHOD == "multi" else 2
 	Networks_functions_keras.NUM_CLASS = NUM_CLASS
@@ -61,30 +61,44 @@ def load_cktp(model, cktp_path):
 	
 
 def dataset2numpy(dataset, num_files, batch_size, steps):
-	labels = np.zeros((num_files))
+	labels = np.zeros((num_files, 4))
 	iterator = dataset.make_one_shot_iterator()
 	next_val = iterator.get_next()
 	with tf.Session() as sess:
 		for offset in range(0, num_files, batch_size):
 			_, label = sess.run(next_val)
 			# print(label)
-			labels[offset:offset+batch_size] = np.argmax(label, axis=-1)
+			# labels[offset:offset+batch_size] = np.argmax(label, axis=-1)
+			labels[offset:offset+batch_size, :] = label
 			print("{}/{}".format(offset, num_files))
 
 	return labels
+
+def txt2list(txts):
+	fnames = []
+	for txt in txts:
+		with open(txt, 'r') as f:
+			fnames += f.read().splitlines()
+
+	return fnames
 
 
 def main():
 	################################################## Parse the arguments
 	parser = argparse.ArgumentParser(description='Train retouch detection network.')
 	parser.add_argument('--src_path', type=str, default='E:\\paired_minibatch', help='test source path')
+	parser.add_argument('--train_path', type=str, 			default='./train_*.txt', help='source path')
+	parser.add_argument('--test_path', type=str, 			default='./test_*.txt', help='source path')
+	parser.add_argument('--validation_path', type=str, 		default='./validation_*.txt', help='source path')
+
 	parser.add_argument('--net1', type=str, default="SRNet", help='SRNet or MISLNet or NamNet or MMCNet or DCTNet or MesoNet')
-	parser.add_argument('--net1_scale', type=float, default=0.5, help='network scale')
-	parser.add_argument('--net1_cktp', type=str, default="./logs/20190928_152736_multi_90/checkpoint/weights_33", help='checkpoint path')
+	parser.add_argument('--net1_scale', type=float, default=1.0, help='network scale')
+	parser.add_argument('--net1_cktp', type=str, default="./logs/20191014_142248_multi_SRNet_93/checkpoint/weights_10", help='checkpoint path')
 	parser.add_argument('--net2', type=str, default="DCTNet", help='SRNet or MISLNet or NamNet or MMCNet or DCTNet or MesoNet')
 	parser.add_argument('--net2_scale', type=float, default=1.0, help='network scale')
-	parser.add_argument('--net2_cktp', type=str, default="./logs/20191011_224519_multi_92/checkpoint/weights_39", help='checkpoint path')
-	parser.add_argument('--batch_size', type=int, default=32, help='batch size')
+	parser.add_argument('--net2_cktp', type=str, default="./logs/20191016_083522_multi_DCTNet_88/checkpoint/weights_14", help='checkpoint path')
+	
+	parser.add_argument('--batch_size', type=int, default=128, help='batch size')
 	parser.add_argument('--method', type=str, default="multi", help='blur median noise multi')
 	parser.add_argument('--weight', type=float, default=0.5, help='weight of network 1')
 
@@ -92,6 +106,10 @@ def main():
 	args = parser.parse_args()
 
 	SRC_PATH 			= args.src_path
+	TRAIN_PATH 			= args.train_path
+	TEST_PATH 			= args.test_path
+	VALIDATION_PATH 	= args.validation_path
+
 	NET1 				= args.net1
 	NET1_SCALE			= args.net1_scale
 	NET1_CKTP 			= args.net1_cktp
@@ -106,19 +124,23 @@ def main():
 
 	################################################## Load the test files
 	# Set test data
-	strong_fnames = glob(join(SRC_PATH, "tfrecord_retouch_strong", METHOD, "*", "*.tfrecord"))
-	weak_fnames = glob(join(SRC_PATH, "tfrecord_retouch_weak", METHOD, "*", "*.tfrecord"))
-	total_fnames = []
-
-	for strong_fname, weak_fname in zip(strong_fnames, weak_fnames):
-		total_fnames += [strong_fname, weak_fname]
-
-	train_fnames, test_fnames = train_test_split(total_fnames, test_size=0.1, shuffle=False)
-	test_fnames, valid_fnames = train_test_split(test_fnames, test_size=0.5, shuffle=False)
-	# test_fnames = test_fnames[:32]
-	test_dataset = configure_dataset(test_fnames, BATCH_SIZE, shuffle=False)
+	train_fnames = txt2list(glob(TRAIN_PATH))
+	test_fnames = txt2list(glob(TEST_PATH))
+	valid_fnames = txt2list(glob(VALIDATION_PATH))
+	train_fnames = train_fnames[:int(len(train_fnames) * 8 / 9)]
 
 
+	fnames = test_fnames
+	session = 'test'
+	dir_path = './fusion'
+
+
+	# Load data
+	#dataset 	= configure_dataset(fnames, BATCH_SIZE, shuffle=False)
+	
+
+	dataset = tf.data.TFRecordDataset(fnames)
+	dataset = dataset.map(Networks_functions_keras._parse_function, num_parallel_calls=cpu_count())
 
 	################################################## Setup the training options
 	# Load model
@@ -133,25 +155,45 @@ def main():
 
 
 	################################################## Test the model
-	STEPS_TEST = len(test_fnames) * 2 // BATCH_SIZE
-	# result = model1.evaluate(test_dataset, steps=STEPS_TEST)
+	STEPS_TEST = len(fnames) * 2 // BATCH_SIZE
+	#result result_ = model1.evaluate(dataset, steps=STEPS_TEST)
 	# read true label
-	
-	labels = dataset2numpy(test_dataset, num_files=len(test_fnames) * 2, batch_size=BATCH_SIZE, steps=STEPS_TEST)
+	#labels = dataset2numpy(dataset, num_files=len(fnames) * 2, batch_size=BATCH_SIZE, steps=STEPS_TEST)
+	#np.save(join(dir_path, 'label_{}.npy'.format(session)), labels)
 	
 
 	# calculate predicted data
-	result1 = model1.predict(test_dataset, steps=STEPS_TEST, verbose=1)
-	result2 = model2.predict(test_dataset, steps=STEPS_TEST, verbose=1)
+	for frames, label in dataset:
+		result = model1(frames)
+		result2 = model1(frames)
+
+
+	result1 = model1.predict(dataset, steps=STEPS_TEST, verbose=1)
+	#np.save(join(dir_path, 'result_{}_{}.npy'.format(session, NET1)), result1)
+	result2 = model2.predict(dataset, steps=STEPS_TEST, verbose=1)
+	#np.save(join(dir_path, 'result_{}_{}.npy'.format(session, NET2)), result2)
+
+
+
+
+
+	"""
 	
+	result1 = np.load('./fusion/result_train_SRNet.npy')
+	result2 = np.load('./fusion/result_train_DCTNet.npy')
+	labels_ = np.load('./fusion/label_train.npy')
+	labels  = np.argmax(labels_, axis=-1)
+
+	assert(result1.shape == result2.shape)
+	assert(result1.shape[0] == labels.shape[0])
 
 	for weight in range(0, 11, 1):
 		weight *= 0.1
 		result = result1 * weight + result2 * (1 - weight)
 		result = np.argmax(result, axis=-1)
 		accuracy = np.mean(np.abs(result == labels))
-		print("weight: {}, accuracy: {}".format(weight, accuracy))
-
+		print("weight: %.1f, accuracy: %.4f" % (weight, accuracy))
+	"""
 
 	
 

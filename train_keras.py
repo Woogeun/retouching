@@ -48,7 +48,7 @@ def main():
 	parser.add_argument('--br', type=str, 					default="*", help='bitrate')
 	parser.add_argument('--log_path', type=str, 			default='./logs', help='log path')
 	parser.add_argument('--batch_size', type=int, 			default=32, help='batch size')
-	parser.add_argument('--network', type=str, 				default="SRNet", help='SRNet or MISLNet or NamNet or MMCNet or DCTNet or MesoNet')
+	parser.add_argument('--network', type=str, 				default="DCTNet", help='SRNet or MISLNet or NamNet or MMCNet or DCTNet or MesoNet')
 	parser.add_argument('--network_scale', type=float, 		default=1.0, help='network scale')
 	parser.add_argument('--regularizer', type=float, 		default=0.0001, help='regularizer')
 	parser.add_argument('--epoch', type=int, 				default=20, help='epoch')
@@ -154,7 +154,7 @@ def main():
 	model.summary()
 
 	# For continuous learning
-	model.load_weights("./logs/20191014_010419_multi/checkpoint/weights_9")
+	model.load_weights("./logs/20191015_195818_multi/checkpoint/weights_19")
 
 
 

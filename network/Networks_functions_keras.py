@@ -139,7 +139,7 @@ def _parse_function(example_proto):
 
 	frames = _bytes_to_array(features, 'frames', tf.uint8, [256, 256, 3])
 	if not COLOR: frames = tf.image.rgb_to_grayscale(frames)
-	label = _bytes_to_array(features, 'label', tf.uint8, [NUM_CLASS])
+	label = _bytes_to_array(features, 'label', tf.uint8, [4])
 
 	# return frames, label, br
 	return frames, label

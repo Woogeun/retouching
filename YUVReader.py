@@ -100,7 +100,7 @@ class YUVReader():
 
 
 				# Divide large size frame into 256x256 size video
-				num_clips, clips = self.clip_frame(RGB, height, width, flag=False)
+				num_clips, clips = self.clip_frame(RGB, height, width, flag=True)
 				cliped_Frames.append(clips)
 
 
@@ -137,7 +137,7 @@ def main():
 	# # parse the arguments
 	parser = argparse.ArgumentParser(description='YUV video to mp4 video')
 	parser.add_argument('--src_path', type=str, default='E:\\YUV_RAWVIDEO', help='source path')
-	parser.add_argument('--dst_path', type=str, default='E:\\YUV_RAWVIDEO/5kVideos', help='destination path')
+	parser.add_argument('--dst_path', type=str, default='E:\\YUV_RAWVIDEO/4k_videos_split', help='destination path')
 	args = parser.parse_args()
 
 	src_path 	= args.src_path

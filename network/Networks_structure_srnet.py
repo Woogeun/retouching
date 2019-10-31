@@ -8,8 +8,8 @@ import tensorflow as tf
 from tensorflow.python.keras.layers import Layer
 from tensorflow.python.keras import Model, Input
 
-from . import Networks_functions_keras
-from .Networks_functions_keras import *
+from Networks_functions import *
+
 
 
 
@@ -22,6 +22,7 @@ class Type1(Layer):
 		self.conv = conv2D(filters, (3,3), (1,1))
 		self.batchNorm = batchNorm()
 		self.relu = relu()
+
 
 	def call(self, inputs):
 		x = self.conv(inputs)
@@ -40,6 +41,7 @@ class Type2(Layer):
 		self.type1 = Type1(filters)
 		self.conv = conv2D(filters, (3,3), (1,1))
 		self.batchNorm = batchNorm()
+
 
 	def call(self, inputs):
 		x = self.type1(inputs)
@@ -62,6 +64,7 @@ class Type3(Layer):
 
 		self.conv2 = conv2D(filters, (3,3), (2,2))
 		self.batchNorm2 = batchNorm()
+
 
 	def call(self, inputs):
 		x1 = self.type1(inputs)
@@ -86,6 +89,7 @@ class Type4(Layer):
 		self.batchNorm = batchNorm()
 		self.globalAveragePooling2D = globalAveragePooling2D()
 
+
 	def call(self, inputs):
 		x = self.type1(inputs)
 		x = self.conv(x)
@@ -98,10 +102,9 @@ class Type4(Layer):
 class SRNet(Model):
 	"""SRNet class."""
 
-	def __init__(self, scale=1.0, reg=0.001, num_class=2, **kwargs):
+	def __init__(self, scale, reg=0.001, num_class, **kwargs):
 		super(SRNet, self).__init__(**kwargs)
-		Networks_functions_keras.SCALE = scale
-		Networks_functions_keras.REG = reg
+		set_parameters(scale, reg, num_class)
 
 		self.l1_t1 = Type1(64)
 		self.l2_t1 = Type1(16)
@@ -121,6 +124,7 @@ class SRNet(Model):
 
 		self.fc = dense(num_class, use_bias=False, activation='softmax')
 
+
 	def call(self, inputs):
 		x = self.l1_t1(inputs)
 		x = self.l2_t1(x)
@@ -136,11 +140,11 @@ class SRNet(Model):
 		x = self.l10_t3(x)
 		x = self.l11_t3(x)
 
-		x = self.l12_t4(x)
+		gpa = self.l12_t4(x)
 
-		x = self.fc(x)
+		x = self.fc(gpa)
 
-		return x
+		return x, gpa
 
 
 

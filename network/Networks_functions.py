@@ -5,10 +5,10 @@ Tensorflow keras functions
 """
 
 import random
-from datetime import datetime
 from os import makedirs, cpu_count
 from os.path import join
 from math import sqrt, pi, cos
+from datetime import datetime
 
 import numpy as np
 
@@ -28,67 +28,21 @@ from tensorflow.python.keras.callbacks import Callback, ModelCheckpoint, TensorB
 ##################### Network parameters
 # These are the default train parameters of network models.
 # It can be set manually via `Networks_functions_keras.SCALE = 0.5`.
-SCALE = 1.0
-REG = 0.001
-NUM_CLASS = 2
-COLOR = False
+SCALE = None
+REG = None
+NUM_CLASS = None
 
+def set_parameters(scale, reg, num_class):
+	"""Set gloval variables with given parameters
 
-##################### Simple helper functions
-def print_args(args):
-	"""Print logs for arguments
+   	# arguments
+   		scale: the scale of convolutional channel (0.0 < scale <= 1.0)
+   		reg: the regularization term (0.0 <= reg <= 1.0)
+   		num_class: the number of class for classification
 
-   	# Arguments
-    	args: the argparser parsed object
 	"""
-
-	args_dict = vars(args)
-	for key, value in args_dict.items():
-		print("{:20s}: {}\n".format(key, value))
-
-
-def write_args(args, filepath):
-	"""Write logs for arguments to the file
-
-   	# Arguments
-    	args: the argparser parsed object
-    	filepath: the log file path to be written
-	"""
-
-	args_dict = vars(args)
-	with open(filepath, 'w') as f:
-		for key, value in args_dict.items():
-			f.write("{:20s}: {}\n".format(key, value))
-
-
-def write_history(history, filepath):
-	"""Write training history to the file
-
-   	# Arguments
-    	history: the history object returned from tf.keras.model.fit()
-    	filepath: the history file path to be written
-	"""
-
-	with open(filepath, 'w') as f:
-		for key, values in history.history.items():
-			f.write("{}\n".format(key))
-			for value in values:
-				f.write("{:0.5f}\n".format(value))
-			f.write("\n")
-
-
-def write_result(keys, values, filepath):
-	"""Write test result to the file
-
-   	# Arguments
-   		keys: the string list of metrics of the model
-    	values: the result value returned from tf.keras.model.evaluate()
-    	filepath: the result file path to be written
-	"""
-
-	with open(filepath, 'w') as f:
-		for key, value in zip(keys, values):
-			f.write("{:20s}: {:0.5f}\n".format(key, value))
+	global SCALE, REG, NUM_CLASS
+	SCALE, REG, NUM_CLASS = scale, reg, num_class
 
 
 
@@ -138,10 +92,10 @@ def _parse_function(example_proto):
 	features = tf.parse_single_example(example_proto, feature_description)
 
 	frames = _bytes_to_array(features, 'frames', tf.uint8, [256, 256, 3])
-	if not COLOR: frames = tf.image.rgb_to_grayscale(frames)
+	frames = tf.image.rgb_to_grayscale(frames)
+
 	label = _bytes_to_array(features, 'label', tf.uint8, [4])
 
-	# return frames, label, br
 	return frames, label
 
 
@@ -155,10 +109,6 @@ def configure_dataset(fnames, batch_size, is_color=False, shuffle=True):
 	# Returns
 		A dataset object configured by batch size
 	"""
-
-	if is_color:
-		global COLOR
-		COLOR = True
 
 	if shuffle: random.shuffle(fnames)
 	buffer_size = max(len(fnames) / batch_size, 16) # recommend buffer_size = # of elements / batches
@@ -339,7 +289,7 @@ def load_callbacks(args):
 
 	# 1. checkpoint callback
 	ckpt_path = join(LOG_PATH, "checkpoint")
-	makedirs(ckpt_path)
+	makedirs(ckpt_path, exists_ok=True)
 	ckpt_callback = SaveWeight(ckpt_path)
 	
 
@@ -732,7 +682,17 @@ def dropout(rate):
 
 
 #caclulate DCT basis
-def cal_scale(p,q): #for 8x8 dct
+def cal_scale(p,q): 
+	""" 8x8 dct scale calculation for cal_basis function
+
+	# arguments
+   		p: horizontal index 
+   		q: vertical index
+
+	# Returns
+		horizontal scale, vertical scale
+	"""
+
 	if p==0:
 		ap = 1/(sqrt(8))
 	else:
@@ -741,23 +701,42 @@ def cal_scale(p,q): #for 8x8 dct
 		aq = 1/(sqrt(8))
 	else:
 		aq = sqrt(0.25) #0.25 = 2/8
+
 	return ap,aq
 
-def cal_basis(p,q): #for 8x8 dct
+def cal_basis(p,q):
+	""" 8x8 dct basis calculation for load_DCT_basis_64 function
+
+	# arguments
+   		p: horizontal index 
+   		q: vertical index
+
+	# Returns
+		8x8 basis for given horizontal and vertical index
+	"""
+
 	basis = np.zeros((8,8))
 	ap,aq = cal_scale(p,q)
 	for m in range(0,8):
 		for n in range(0,8):
 			basis[m,n] = ap*aq*cos(pi*(2*m+1)*p/16)*cos(pi*(2*n+1)*q/16)
+
 	return basis
 
-def load_DCT_basis_64(): #for 8x8 dct
+def load_DCT_basis_64():
+	"""drouput layer
+
+	# Returns
+		A 8x8x1x64 tf.constant initialized by 8x8 DCT basis
+	"""
+
 	basis_64 = np.zeros((8,8,1,64))
 	idx = 0
 	for i in range(8):
 		for j in range(8):
 			basis_64[:,:,0,idx] = cal_basis(i,j)
 			idx = idx + 1
+
 	return tf.constant(basis_64.tolist())
 
 

@@ -8,18 +8,19 @@ import tensorflow as tf
 from tensorflow.python.keras.layers import Layer
 from tensorflow.python.keras import Model, Input
 
-from . import Networks_functions_keras
-from .Networks_functions_keras import *
+from .Networks_functions import *
 
 
 class ConvBlock(Layer):
 	"""Conv, batchNorm, max pooling block class."""
+
 	def __init__(self, filters, kernel_size, pool_size, **kwargs):
 		super(ConvBlock, self).__init__(**kwargs)
 
 		self.conv = conv2D(filters, kernel_size)
 		self.batchNorm = batchNorm()
 		self.maxPooling = maxPooling2D(pool_size)
+
 
 	def __call__(self, inputs):
 		x = self.conv(inputs)
@@ -31,11 +32,13 @@ class ConvBlock(Layer):
 
 class DropoutBlock(Layer):
 	"""Dropout and fully connected class."""
+
 	def __init__(self, fc, **kwargs):
 		super(DropoutBlock, self).__init__(**kwargs)
 
 		self.dropout = dropout(0.5)
 		self.fc = dense(fc)
+
 
 	def __call__(self, inputs):
 		x = self.dropout(inputs)
@@ -47,24 +50,18 @@ class DropoutBlock(Layer):
 class MesoNet(Model):
 	"""MesoNet class."""
 
-	def __init__(self, scale=1.0, reg=0.001, num_class=2, **kwargs):
+	def __init__(self, scale, reg=0.001, num_class, **kwargs):
 		super(MesoNet, self).__init__(**kwargs)
-		Networks_functions_keras.SCALE = scale
-		Networks_functions_keras.REG = reg
+		set_parameters(scale, reg, num_class)
 
-		# convolutional blocks
 		self.block1 = ConvBlock(8, (3,3), (2,2))
 		self.block2 = ConvBlock(8, (5,5), (2,2))
 		self.block3 = ConvBlock(16, (5,5), (2,2))
 		self.block4 = ConvBlock(16, (5,5), (4,4))
 
-
-		# dropout blocks
 		self.dropout1 = DropoutBlock(16)
 		self.dropout2 = DropoutBlock(num_class)
 		
-
-		# softmax
 		self.softmax = softmax()
 		
 

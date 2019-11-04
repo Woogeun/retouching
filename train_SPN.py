@@ -23,18 +23,16 @@ def main():
 
 	################################################## parse the arguments
 	parser = argparse.ArgumentParser(description='Train retouch detection network.')
-	parser.add_argument('--src_path', type=str, 			default='E:\\paired_minibatch', help='source path')
-	parser.add_argument('--train_path', type=str, 			default='./train_*.txt', help='source path')
-	parser.add_argument('--test_path', type=str, 			default='./test_*.txt', help='source path')
-	parser.add_argument('--validation_path', type=str, 		default='./validation_*.txt', help='source path')
+	parser.add_argument('--src_path', type=str, 			default='./split_names', help='source path')
+	parser.add_argument('--src_frac', type=float, 			default=0.2, help='amount of training dataset')
 
-	parser.add_argument('--method', type=str, 				default="multi", help='blur, median, noise or multi')
+	parser.add_argument('--method', type=str, 				default="blur", help='blur, median, noise or multi')
 	parser.add_argument('--br', type=str, 					default="*", help='bitrate')
-	parser.add_argument('--log_path', type=str, 			default='./logs', help='log path')
+	parser.add_argument('--log_path', type=str, 			default='logs', help='log path')
 	parser.add_argument('--summary_interval', type=int, 	default=1, help='loss inverval')
 	parser.add_argument('--checkpoint_interval', type=int, 	default=1, help='checkpoint interval')
 
-	parser.add_argument('--network', type=str, 				default="DCTNet", help='SRNet or MISLNet or NamNet or MMCNet or DCTNet or MesoNet')
+	parser.add_argument('--network', type=str, 				default="SRNet", help='SRNet or MISLNet or DCTNet or MesoNet')
 	parser.add_argument('--network_scale', type=float, 		default=1.0, help='network scale')
 	parser.add_argument('--checkpoint_path', type=str, 		default="", help='checkpoint path')
 	parser.add_argument('--regularizer', type=float, 		default=0.0001, help='regularizer')
@@ -50,9 +48,7 @@ def main():
 	args = parser.parse_args()
 
 	SRC_PATH 			= args.src_path
-	TRAIN_PATH 			= args.train_path
-	TEST_PATH 			= args.test_path
-	VALIDATION_PATH 	= args.validation_path
+	SRC_FRAC 			= args.src_frac
 
 	METHOD 				= args.method
 	BITRATE 			= args.br + "k"
@@ -77,29 +73,31 @@ def main():
 
 
 
-	################################################## Setup the dataset
-	# Set train, validation, and test data
-	train_fnames = txt2list(glob(TRAIN_PATH))
-	train_fnames = train_fnames[:int(len(train_fnames) * 8 / 9)]
-	test_fnames = txt2list(glob(TEST_PATH))
-	valid_fnames = txt2list(glob(VALIDATION_PATH))
-	
-
-
-	# Load data
-	valid_dataset  	= configure_dataset(valid_fnames, BATCH_SIZE)
-	train_dataset 	= configure_dataset(train_fnames, BATCH_SIZE)
-	test_dataset 	= configure_dataset(test_fnames, BATCH_SIZE)
-	
-
-
 	################################################## Setup the training options
 	# Load model
 	NUM_CLASS = 4 if METHOD == "multi" else 2
 	
 	model = load_model(NETWORK, SCALE, REG, NUM_CLASS)
-	load_ckpt(model, CHECKPOINT_PATH, START_LR)
+	load_cktp(model, CHECKPOINT_PATH, START_LR)
 
+
+
+	################################################## Setup the dataset
+	# Set train, validation, and test data
+	train_fnames = txt2list(glob(join(SRC_PATH, METHOD, "train_*.txt")))
+	test_fnames = txt2list(glob(join(SRC_PATH, METHOD, "test_*.txt")))
+	valid_fnames = txt2list(glob(join(SRC_PATH, METHOD, "valid_*.txt")))
+
+	# Reduce the dataset
+	train_fnames = train_fnames[:int(len(train_fnames) * SRC_FRAC)]
+	test_fnames = test_fnames[:int(len(test_fnames) * SRC_FRAC)]
+	valid_fnames = valid_fnames[:int(len(valid_fnames) * SRC_FRAC)]
+	
+	# Load data
+	train_dataset 	= configure_dataset(train_fnames, BATCH_SIZE)
+	test_dataset 	= configure_dataset(test_fnames, BATCH_SIZE)
+	valid_dataset  	= configure_dataset(valid_fnames, BATCH_SIZE)
+	
 
 
 	################################################## Train the model

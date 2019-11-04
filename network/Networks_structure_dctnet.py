@@ -73,7 +73,7 @@ class DCT(Layer):
 class DCTNet(Model):
 	"""DCTNet class."""
 
-	def __init__(self, scale, reg=0.001, num_class, **kwargs):
+	def __init__(self, scale, reg, num_class, **kwargs):
 		super(DCTNet, self).__init__(**kwargs)
 		set_parameters(scale, reg, num_class)
 
@@ -102,7 +102,7 @@ class DCTNet(Model):
 
 		x = self.fc3(gpa)
 
-		return x, gpa
+		return x
 
 
 

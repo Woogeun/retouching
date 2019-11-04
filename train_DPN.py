@@ -23,10 +23,8 @@ def main():
 
 	################################################## parse the arguments
 	parser = argparse.ArgumentParser(description='Train retouch detection network.')
-	parser.add_argument('--src_path', type=str, 			default='E:\\paired_minibatch', help='source path')
-	parser.add_argument('--train_path', type=str, 			default='./train_*.txt', help='source path')
-	parser.add_argument('--test_path', type=str, 			default='./test_*.txt', help='source path')
-	parser.add_argument('--validation_path', type=str, 		default='./validation_*.txt', help='source path')
+	parser.add_argument('--src_path', type=str, 			default='./split_names', help='source path')
+	parser.add_argument('--src_frac', type=float, 			default=1.0, help='amount of training dataset')
 
 	parser.add_argument('--method', type=str, 				default="multi", help='blur, median, noise or multi')
 	parser.add_argument('--br', type=str, 					default="*", help='bitrate')
@@ -59,9 +57,7 @@ def main():
 	args = parser.parse_args()
 
 	SRC_PATH 			= args.src_path
-	TRAIN_PATH 			= args.train_path
-	TEST_PATH 			= args.test_path
-	VALIDATION_PATH 	= args.validation_path
+	SRC_FRAC 			= args.src_frac
 
 	METHOD 				= args.method
 	BITRATE 			= args.br + "k"
@@ -95,22 +91,6 @@ def main():
 
 
 
-	################################################## Setup the dataset
-	# Set train, validation, and test data
-	train_fnames = txt2list(glob(TRAIN_PATH))
-	train_fnames = train_fnames[:int(len(train_fnames) * 8 / 9)]
-	test_fnames = txt2list(glob(TEST_PATH))
-	valid_fnames = txt2list(glob(VALIDATION_PATH))
-	
-
-
-	# Load data
-	valid_dataset  	= configure_dataset(valid_fnames, BATCH_SIZE)
-	train_dataset 	= configure_dataset(train_fnames, BATCH_SIZE)
-	test_dataset 	= configure_dataset(test_fnames, BATCH_SIZE)
-	
-
-
 	################################################## Setup the training options
 	# Load model
 	NUM_CLASS = 4 if METHOD == "multi" else 2
@@ -119,10 +99,28 @@ def main():
 	model2 = load_model(NETWORK2, SCALE2, REG, NUM_CLASS)
 	model3 = load_model(NETWORK3, SCALE3, REG, NUM_CLASS)
 
-	load_ckpt(model1, CHECKPOINT1_PATH)
-	load_ckpt(model2, CHECKPOINT3_PATH)
-	load_ckpt(model3, CHECKPOINT3_PATH)
+	load_cktp(model1, CHECKPOINT1_PATH)
+	load_cktp(model2, CHECKPOINT3_PATH)
+	load_cktp(model3, CHECKPOINT3_PATH)
 
+
+
+	################################################## Setup the dataset
+	# Set train, validation, and test data
+	train_fnames = txt2list(glob(join(SRC_PATH, METHOD, "train_*.txt")))
+	test_fnames = txt2list(glob(join(SRC_PATH, METHOD, "test_*.txt")))
+	valid_fnames = txt2list(glob(join(SRC_PATH, METHOD, "valid_*.txt")))
+
+	# Reduce the dataset
+	train_fnames = train_fnames[:int(len(train_fnames) * SRC_FRAC)]
+	test_fnames = test_fnames[:int(len(test_fnames) * SRC_FRAC)]
+	valid_fnames = valid_fnames[:int(len(valid_fnames) * SRC_FRAC)]
+	
+	# Load data
+	valid_dataset  	= configure_dataset(valid_fnames, BATCH_SIZE)
+	train_dataset 	= configure_dataset(train_fnames, BATCH_SIZE)
+	test_dataset 	= configure_dataset(test_fnames, BATCH_SIZE)
+	
 
 
 	################################################## Train the model

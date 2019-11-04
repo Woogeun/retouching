@@ -50,7 +50,7 @@ class DropoutBlock(Layer):
 class MesoNet(Model):
 	"""MesoNet class."""
 
-	def __init__(self, scale, reg=0.001, num_class, **kwargs):
+	def __init__(self, scale, reg, num_class, **kwargs):
 		super(MesoNet, self).__init__(**kwargs)
 		set_parameters(scale, reg, num_class)
 

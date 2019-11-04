@@ -29,7 +29,7 @@ def main():
 	parser.add_argument('--net2_scale', type=float, default=1.0, help='network scale')
 	parser.add_argument('--net2_cktp', type=str, 	default="./logs/20191016_083522_multi_DCTNet_88/checkpoint/weights_14", help='checkpoint path')
 
-	parser.add_argument('--net3', type=str, 		default="DCTNet", help='SRNet or MISLNet or NamNet or MMCNet or DCTNet or MesoNet')
+	parser.add_argument('--net3', type=str, 		default="Fusion", help='SRNet or MISLNet or NamNet or MMCNet or DCTNet or MesoNet')
 	parser.add_argument('--net3_scale', type=float, default=1.0, help='network scale')
 	parser.add_argument('--net3_cktp', type=str, 	default="-", help='checkpoint path')
 	

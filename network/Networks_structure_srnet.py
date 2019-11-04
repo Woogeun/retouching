@@ -8,7 +8,7 @@ import tensorflow as tf
 from tensorflow.python.keras.layers import Layer
 from tensorflow.python.keras import Model, Input
 
-from Networks_functions import *
+from .Networks_functions import *
 
 
 
@@ -102,7 +102,7 @@ class Type4(Layer):
 class SRNet(Model):
 	"""SRNet class."""
 
-	def __init__(self, scale, reg=0.001, num_class, **kwargs):
+	def __init__(self, scale, reg, num_class, **kwargs):
 		super(SRNet, self).__init__(**kwargs)
 		set_parameters(scale, reg, num_class)
 
@@ -144,7 +144,7 @@ class SRNet(Model):
 
 		x = self.fc(gpa)
 
-		return x, gpa
+		return x
 
 
 

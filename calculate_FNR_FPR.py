@@ -27,18 +27,16 @@ def main():
 
 	parser.add_argument('--net', type=str, 			default="SRNet", help='SRNet or MISLNet or DCTNet or MesoNet')
 	parser.add_argument('--net_scale', type=float, 	default=1.0, help='network scale')
-	# parser.add_argument('--net_cktp', type=str, 	default="./logs/20191104_171914_blur_SRNet_98/checkpoint/weights_18", help='checkpoint path')
+	parser.add_argument('--net_cktp', type=str, 	default="./logs/20191104_171914_blur_SRNet_98/checkpoint/weights_18", help='checkpoint path')
 	# parser.add_argument('--net_cktp', type=str, 	default="./logs/20191107_134614_median_SRNet_98/checkpoint/weights_18", help='checkpoint path')
 	# parser.add_argument('--net_cktp', type=str, 	default="./logs/20191111_114343_noise_SRNet_90/checkpoint/weights_18", help='checkpoint path')
-	parser.add_argument('--net_cktp', type=str, 	default="./logs/20191014_142248_multi_SRNet_93/checkpoint/weights_18", help='checkpoint path')
+	# parser.add_argument('--net_cktp', type=str, 	default="./logs/20191014_142248_multi_SRNet_93/checkpoint/weights_18", help='checkpoint path')
 	
 	parser.add_argument('--batch_size', type=int, 	default=256, help='batch size')
-	# parser.add_argument('--method', type=str, 		default="blur", help='blur median noise multi')
+	parser.add_argument('--method', type=str, 		default="blur", help='blur median noise multi')
 	# parser.add_argument('--method', type=str, 		default="median", help='blur median noise multi')
 	# parser.add_argument('--method', type=str, 		default="noise", help='blur median noise multi')
-	parser.add_argument('--method', type=str, 		default="multi", help='blur median noise multi')
-
-	parser.add_argument('--br', type=str, 			default="500k", help='500k, 600k, 700k or 800k')	
+	# parser.add_argument('--method', type=str, 		default="multi", help='blur median noise multi')
 
 	args = parser.parse_args()
 
@@ -50,8 +48,6 @@ def main():
 
 	BATCH_SIZE 			= args.batch_size
 	METHOD 				= args.method
-
-	BITRATE 			= args.br
 
 	print_args(args)
 
@@ -71,7 +67,7 @@ def main():
 	################################################## Load the test files
 	# Set test data
 	test_fnames = txt2list(glob(join(SRC_PATH, METHOD, "test_*.txt")))
-	test_fnames = list(filter(lambda x: BITRATE in x, test_fnames))
+	# test_fnames = list(filter(lambda x: "800k" in x, test_fnames))
 	dataset 	= configure_dataset(test_fnames, BATCH_SIZE, shuffle=False)
 
 	
@@ -79,8 +75,53 @@ def main():
 	################################################## Test the model
 	total_length = 2 * len(test_fnames)
 	STEPS_TEST = total_length // BATCH_SIZE
+
+	labels = np.zeros((total_length, 2))
+	preds = np.zeros((total_length, 2))
 	
-	result = model.evaluate(dataset, steps=STEPS_TEST, verbose=1)
+
+	offset = 0
+	for frames, labels_ in dataset:
+		print("offset: {0:.2f}%".format(100 * offset / total_length))
+		batch_size = labels_.shape[0]
+
+		labels[offset:offset+batch_size, :] = labels_
+		preds[offset:offset+batch_size, :] = model.predict(frames, verbose=1)
+
+		offset += batch_size
+
+	labels = labels[:,1]
+	preds = preds[:,1]
+		
+
+	results = []
+	for THRESHOLD in np.arange(0.1, 1.0, 0.1):
+		preds_ = preds > THRESHOLD
+
+		TP = 0
+		TN = 0
+		FP = 0
+		FN = 0
+		
+		for label, pred in zip(labels, preds_):
+			if 		label == 0 and pred == 0: TN += 1
+			elif 	label == 0 and pred == 1: FP += 1
+			elif 	label == 1 and pred == 0: FN += 1
+			elif 	label == 1 and pred == 1: TP += 1
+
+		print(f"TN: {TN} FP: {FP}, FN: {FN}, TP: {TP}")
+
+		TPR = TP / (TP + FN)
+		FNR = FN / (TP + FN) # 미탐지율
+		FPR = FP / (FP + TN) # 오탐지율
+		ACC = (TP + TN) / (TP + TN + FP + FN)
+		
+
+		ROC = TPR / FPR
+		results += [[THRESHOLD, ACC, FNR, FPR]]
+
+	for result in results:
+		print(f"THRESHOLD: {result[0]:.1f}, 정확도: {result[1] * 100:.2f}%, 미탐지율: {result[2] * 100:.2f}%, 오탐지율: {result[3] * 100:.2f}%")
 
 
 

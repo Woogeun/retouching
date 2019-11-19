@@ -17,6 +17,7 @@ from predictor import Detector
 
 
 
+__DUMMY__ = 0.0001
 def main():
 	################################################## Parse the arguments
 	parser = argparse.ArgumentParser(description='Train retouch detection network.')
@@ -27,7 +28,6 @@ def main():
 	parser.add_argument('--network_scale', type=float, 	default=0.5, help='network scale')
 	parser.add_argument('--checkpoint', type=str, 		default="./logs/20191014_142248_multi_SRNet_93/checkpoint/weights_10", help='checkpoint path')
 
-	parser.add_argument('--regularization', type=float, default=0.0001, help='regularization term')
 	parser.add_argument('--method', type=str, 			default="multi", help='blur, median, noise or multi')
 
 	args = parser.parse_args()
@@ -39,7 +39,6 @@ def main():
 	SCALE 		= args.network_scale
 	CHECKPOINT 	= args.checkpoint
 
-	REG 		= args.regularization
 	METHOD 		= args.method
 
 	print_args(args)
@@ -48,7 +47,7 @@ def main():
 
 	################################################## Load model with checkpoint
 	NUM_CLASS = 4 if METHOD == "multi" else 2
-	model = load_model(NETWORK, SCALE, REG, NUM_CLASS)
+	model = load_model(NETWORK, SCALE, __DUMMY__, NUM_CLASS)
 	load_ckpt(model, CHECKPOINT)
 
 

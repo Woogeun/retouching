@@ -5,6 +5,7 @@ DPN evaluate module
 """
 
 import argparse
+from os.path import join
 
 import numpy as np
 
@@ -19,7 +20,7 @@ from network import *
 def main():
 	################################################## Parse the arguments
 	parser = argparse.ArgumentParser(description='Train retouch detection network.')
-	parser.add_argument('--test_path', type=str, 	default='./test_*.txt', help='source path')
+	parser.add_argument('--src_path', type=str, 	default='./split_names', help='source path')
 
 	parser.add_argument('--net1', type=str, 		default="SRNet", help='SRNet or MISLNet or DCTNet or MesoNet')
 	parser.add_argument('--net1_scale', type=float, default=1.0, help='network scale')
@@ -38,7 +39,7 @@ def main():
 
 	args = parser.parse_args()
 
-	TEST_PATH 			= args.test_path
+	SRC_PATH 			= args.src_path
 
 	NET1 				= args.net1
 	NET1_SCALE			= args.net1_scale
@@ -61,7 +62,7 @@ def main():
 
 	################################################## Load the test files
 	# Set test data
-	test_fnames = txt2list(glob(TEST_PATH))
+	test_fnames = txt2list(glob(join(SRC_PATH, METHOD, "test_*.txt")))
 	dataset 	= configure_dataset(test_fnames, BATCH_SIZE)
 
 	

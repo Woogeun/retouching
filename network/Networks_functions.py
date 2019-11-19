@@ -130,42 +130,6 @@ def conv2D(filters, kernel_size, strides=(1,1), kernel_constraint=None):
 					bias_regularizer=bias_regularizer,
 					kernel_constraint=kernel_constraint)
 
-def conv2D_(filters, kernel_size, strides=(1,1), kernel_constraint=None):
-	"""2D convolution layer that doesn`t change the number of filters by SCALE factor
-
-   	# arguments
-   		filters: the number of filters
-   		kernel_size: a tuple of kernel size
-   		strides: a tuple of strides
-   		kernel_constraint: the tf.keras.constraints object 
-
-	# Returns
-		A tf.keras.layers.Conv2D layer
-	"""
-
-	filters 			= filters
-	padding 			= 'same'
-	data_format 		= 'channels_last'
-	activation 			= None
-	use_bias 			= True
-	kernel_initializer 	= tf.keras.initializers.he_normal()
-	bias_initializer 	= tf.keras.initializers.constant(value=0.2)
-	kernel_regularizer 	= tf.keras.regularizers.l2(l=REG)
-	bias_regularizer 	= None
-
-	return Conv2D(	filters=filters, \
-					kernel_size=kernel_size, \
-					strides=strides, \
-					padding=padding, \
-					data_format=data_format, \
-					activation=activation, \
-					use_bias=use_bias, \
-					kernel_initializer=kernel_initializer, \
-					bias_initializer=bias_initializer, \
-					kernel_regularizer=kernel_regularizer, \
-					bias_regularizer=bias_regularizer,
-					kernel_constraint=kernel_constraint)
-
 def dense(units, use_bias=True, activation=None):
 	"""Fully connected layer
 

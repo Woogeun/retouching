@@ -230,7 +230,7 @@ def configure_dataset(fnames, batch_size, is_color=False, shuffle=True):
 	dataset = dataset.map(_parse_function, num_parallel_calls=cpu_count())
 	dataset = dataset.prefetch(buffer_size=buffer_size) 
 	if shuffle: dataset = dataset.shuffle(buffer_size=buffer_size, reshuffle_each_iteration=True) 
-	dataset = dataset.repeat()
+	if shuffle: dataset = dataset.repeat()
 	dataset = dataset.batch(batch_size)
 
 	return dataset

@@ -24,9 +24,9 @@ def main():
 	################################################## parse the arguments
 	parser = argparse.ArgumentParser(description='Train retouch detection network.')
 	parser.add_argument('--src_path', type=str, 			default='./split_names', help='source path')
-	parser.add_argument('--src_frac', type=float, 			default=0.2, help='amount of training dataset')
+	parser.add_argument('--src_frac', type=float, 			default=1.0, help='amount of training dataset')
 
-	parser.add_argument('--method', type=str, 				default="blur", help='blur, median, noise or multi')
+	parser.add_argument('--method', type=str, 				default="noise", help='blur, median, noise or multi')
 	parser.add_argument('--br', type=str, 					default="*", help='bitrate')
 	parser.add_argument('--log_path', type=str, 			default='logs', help='log path')
 	parser.add_argument('--summary_interval', type=int, 	default=1, help='loss inverval')
@@ -34,12 +34,13 @@ def main():
 
 	parser.add_argument('--network', type=str, 				default="SRNet", help='SRNet or MISLNet or DCTNet or MesoNet')
 	parser.add_argument('--network_scale', type=float, 		default=1.0, help='network scale')
+	# parser.add_argument('--checkpoint_path', type=str, 		default="./logs/20191109_120117_noise/checkpoint/weights_19", help='checkpoint path')
 	parser.add_argument('--checkpoint_path', type=str, 		default="", help='checkpoint path')
 	parser.add_argument('--regularizer', type=float, 		default=0.0001, help='regularizer')
 	
-	parser.add_argument('--epoch', type=int, 				default=30, help='epoch')
+	parser.add_argument('--epoch', type=int, 				default=50, help='epoch')
 	parser.add_argument('--batch_size', type=int, 			default=32, help='batch size')
-	parser.add_argument('--start_lr', type=float, 			default=1e-04, help='start learning rate')
+	parser.add_argument('--start_lr', type=float, 			default=5e-05, help='start learning rate')
 	parser.add_argument('--lr_update_interval', type=int, 	default=1, help='learning rate update interval')
 	parser.add_argument('--lr_update_rate', type=float, 	default=0.9, help='learning rate update rate')
 

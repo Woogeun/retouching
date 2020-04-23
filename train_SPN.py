@@ -11,6 +11,7 @@ from glob import glob
 
 import tensorflow as tf
 from tensorflow.python import keras
+from tensorflow.python.keras import backend as K
 from sklearn.model_selection import train_test_split
 
 from utils import *
@@ -26,23 +27,22 @@ def main():
 	parser.add_argument('--src_path', type=str, 			default='./split_names', help='source path')
 	parser.add_argument('--src_frac', type=float, 			default=1.0, help='amount of training dataset')
 
-	parser.add_argument('--method', type=str, 				default="noise", help='blur, median, noise or multi')
+	parser.add_argument('--method', type=str, 				default="multi", help='blur, median, noise or multi')
 	parser.add_argument('--br', type=str, 					default="*", help='bitrate')
 	parser.add_argument('--log_path', type=str, 			default='logs', help='log path')
 	parser.add_argument('--summary_interval', type=int, 	default=1, help='loss inverval')
 	parser.add_argument('--checkpoint_interval', type=int, 	default=1, help='checkpoint interval')
 
-	parser.add_argument('--network', type=str, 				default="SRNet", help='SRNet or MISLNet or DCTNet or MesoNet')
-	parser.add_argument('--network_scale', type=float, 		default=1.0, help='network scale')
+	parser.add_argument('--network', type=str, 				default="XceptionNet", help='SRNet or MISLNet or DCTNet or MesoNet or XceptionNet')
 	# parser.add_argument('--checkpoint_path', type=str, 		default="./logs/20191109_120117_noise/checkpoint/weights_19", help='checkpoint path')
 	parser.add_argument('--checkpoint_path', type=str, 		default="", help='checkpoint path')
 	parser.add_argument('--regularizer', type=float, 		default=0.0001, help='regularizer')
 	
-	parser.add_argument('--epoch', type=int, 				default=50, help='epoch')
-	parser.add_argument('--batch_size', type=int, 			default=32, help='batch size')
-	parser.add_argument('--start_lr', type=float, 			default=5e-05, help='start learning rate')
+	parser.add_argument('--epoch', type=int, 				default=20, help='epoch')
+	parser.add_argument('--batch_size', type=int, 			default=16, help='batch size')
+	parser.add_argument('--start_lr', type=float, 			default=5e-5, help='start learning rate')
 	parser.add_argument('--lr_update_interval', type=int, 	default=1, help='learning rate update interval')
-	parser.add_argument('--lr_update_rate', type=float, 	default=0.9, help='learning rate update rate')
+	parser.add_argument('--lr_update_rate', type=float, 	default=0.95, help='learning rate update rate')
 
 	parser.add_argument('--debug', type=bool, 				default=False, help='True or False')
 	
@@ -58,7 +58,6 @@ def main():
 	CHECKPOINT_INTERVAL = args.checkpoint_interval
 
 	NETWORK 			= args.network
-	SCALE 				= args.network_scale
 	CHECKPOINT_PATH 	= args.checkpoint_path
 	REG 				= args.regularizer
 	
@@ -78,8 +77,8 @@ def main():
 	# Load model
 	NUM_CLASS = 4 if METHOD == "multi" else 2
 	
-	model = load_model(NETWORK, SCALE, REG, NUM_CLASS)
-	load_cktp(model, CHECKPOINT_PATH, START_LR)
+	model = load_model(NETWORK, REG, NUM_CLASS)
+	load_ckpt(model, CHECKPOINT_PATH, START_LR)
 
 
 
@@ -145,6 +144,7 @@ def main():
 
 
 if __name__=="__main__":
+	K.clear_session()
 	main()
 
 

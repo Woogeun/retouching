@@ -73,9 +73,10 @@ class DCT(Layer):
 class DCTNet(Model):
 	"""DCTNet class."""
 
-	def __init__(self, scale, reg, num_class, **kwargs):
+	def __init__(self, reg, num_class, is_DPN, **kwargs):
 		super(DCTNet, self).__init__(**kwargs)
-		set_parameters(scale, reg, num_class)
+		set_parameters(reg, num_class)
+		self.is_DPN = is_DPN
 
 		self.dct = DCT()
 		self.dct.build(input_shape=(None,256,256,1))
@@ -98,11 +99,12 @@ class DCTNet(Model):
 		x = self.l3_t1(x)
 		x = self.l4_t1(x)
 
-		gpa = self.globalAveragePooling2D(x)
+		gap = self.globalAveragePooling2D(x)
 
-		x = self.fc3(gpa)
+		x = self.fc3(gap)
 
-		return x
+		if self.is_DPN: return x, gap
+		else: return x
 
 
 

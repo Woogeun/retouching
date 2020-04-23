@@ -114,7 +114,9 @@ after.meta
 retouch_tfrecord_train/
 retouch_tfrecord_test/
 tfrecord_retouch_strong/
-logs/
 *.png
 *.bat
 assign.py
+/fusion
+.tbenv
+logs

@@ -4,9 +4,11 @@ Util functions
 @description: util functions for printing writing training environments
 """
 
+import sys
+import random
 from os import makedirs, cpu_count
 from os.path import join
-import random
+from glob import glob
 from datetime import datetime
 
 import numpy as np
@@ -23,6 +25,19 @@ from network import *
 
 
 ##################### Simple helper functions
+def log_history(file, string, percent):
+    file.write(string + '\n')
+    print(string, end='\r' if percent < 100 else '\n')
+
+
+def log_one_batch(phase, offset, total, loss, accuracy, history):
+    percent = 100 * offset / total
+    log_history(history,
+                f"[{phase}: {percent:.3f}%] loss: {loss.result():.4f}, accuracy: {accuracy.result():.4f}",
+                percent)
+    if percent < 100: sys.stdout.flush()
+    
+
 def print_args(args):
 	"""Print logs for arguments
 
@@ -79,16 +94,27 @@ def write_result(keys, values, filepath):
 			f.write("{:20s}: {:0.5f}\n".format(key, value))
 
 
+def print_progress(prefix, value):
+	"""print the progress status
+
+   	# Arguments
+   		prefix: the string that contains formatting typed string for print the progress status
+    	value: the value that updated
+	"""
+
+	print(prefix.format(value), end='\r')
+	sys.stdout.flush()
+
 
 ##################### model and checkpoint load functions
-def load_model(model_name, scale, reg, num_class):
+def load_model(model_name, reg, num_class, is_DPN=False):
 	"""Load single model by model name
 
    	# arguments
-   		model_name: string model name 
-   		scale: float of the convolutional layer channel scale (0.0 < scale <= 1.0)
+   		model_name: string model name
    		reg: float of the regularization term (0.0 <= reg <= 1.0)
    		num_class: int of the number of class for classification
+   		is_DPN: boolean that indicating that model is DPN
 
    	# returns
    		tf.keras.model.Model
@@ -96,22 +122,62 @@ def load_model(model_name, scale, reg, num_class):
 	"""
 
 	if model_name == "SRNet":
-		model = Networks_structure_srnet.SRNet(scale, reg, num_class)
+		model = Networks_structure_srnet.SRNet(reg, num_class, is_DPN)
+		model.build(input_shape=(None, 256, 256, 1))
 	elif model_name == "MISLNet":
-		model = Networks_structure_mislnet.MISLNet(scale, reg, num_class)
+		model = Networks_structure_mislnet.MISLNet(reg, num_class)
+		model.build(input_shape=(None, 256, 256, 1))
 	elif model_name == "DCTNet":
-		model = Networks_structure_dctnet.DCTNet(scale, reg, num_class)
+		model = Networks_structure_dctnet.DCTNet(reg, num_class, is_DPN)
+		model.build(input_shape=(None, 256, 256, 1))
 	elif model_name == "MesoNet":
-		model = Networks_structure_mesonet.MesoNet(scale, reg, num_class)
+		model = Networks_structure_mesonet.MesoNet(reg, num_class)
+		model.build(input_shape=(None, 256, 256, 1))
+	elif model_name == "XceptionNet":
+		model = Networks_structure_xceptionnet.XceptionNet(reg, num_class)
+		model.build(input_shape=(None, 256, 256, 1))
 	elif model_name == "Fusion":
-		model = Networks_structure_fusion.Fusion(scale, reg, num_class)
+		model = Networks_structure_fusion.Fusion(reg, num_class)
+		model.build(input_shape=(None, 1024))
+	elif model_name == "Total":
+		model = Networks_structure_total.Total(reg, num_class)
+		model.build(input_shape=(None, 256, 256, 1))
 	else:
 		raise(BaseException("No such network: {}".format(NETWORK)))
-
+	
+	model.summary()
 	return model
 
 
-def load_cktp(model, cktp_path, start_lr):
+def load_logFiles(LOG_PATH, METHOD, NETWORK):
+	"""Load log files data
+
+	   	# arguments
+	   		LOG_PATH: default log path
+	   		METHOD: blur, median, noise, or multi
+	   		NETWORK: the name of the network
+
+	   	# returns
+   		list of checkpoint path, history txt file, train summary writer, and valid summary writer
+
+	"""
+	# Set log file path
+	current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+	log_path = join(LOG_PATH, current_time + "_{}_{}_".format(METHOD, NETWORK))
+	ckpt_path = join(log_path, "checkpoint")
+	makedirs(ckpt_path, exist_ok=True)
+	history = open(join(log_path, 'log.txt'), 'w')
+
+	# 2. tensorboard callback
+	train_log_dir = join(log_path, 'gradient_tape', 'train')
+	valid_log_dir = join(log_path, 'gradient_tape', 'validation')
+	train_summary_writer = tf.summary.create_file_writer(train_log_dir)
+	valid_summary_writer = tf.summary.create_file_writer(valid_log_dir)
+
+	return log_path, ckpt_path, history, train_summary_writer, valid_summary_writer
+
+
+def load_ckpt(model, cktp_path, start_lr):
 	"""Load checkpoint weights to the model
 
    	# arguments
@@ -120,19 +186,19 @@ def load_cktp(model, cktp_path, start_lr):
    		start_lr: float start learning rate of training model
 
 	"""
-	
+
 	optimizer = tf.keras.optimizers.Adamax(lr=start_lr)
 	loss = 'categorical_crossentropy'
-	metrics = {	"Accuracy": tf.keras.metrics.CategoricalAccuracy() }
+	metrics = [tf.keras.metrics.CategoricalAccuracy()]
 
-	model.compile(optimizer=optimizer, loss=loss, metrics=list(metrics.values()))
-	
-	if type(model) != Networks_structure_fusion.Fusion: 
+	model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
+
+	if type(model) != Networks_structure_fusion.Fusion:
 		model.build(input_shape=(None,256,256,1))
 	else:
-		model.build(input_shape=(None,1024)) 
+		model.build(input_shape=(None,1024))
 
-	model.summary()
+	# model.summary()
 
 	if cktp_path != "":
 		model.load_weights(cktp_path)
@@ -154,7 +220,7 @@ def txt2list(txts):
 		with open(txt, 'r') as f:
 			fnames += f.read().splitlines()
 
-	return fnames 
+	return fnames
 
 
 
@@ -211,7 +277,7 @@ def _parse_function(example_proto):
 	return frames, label
 
 
-def configure_dataset(fnames, batch_size, is_color=False, shuffle=True):
+def configure_dataset(src_path, method, phase, batch_size, shuffle=True, repeat=True, frac=1.0):
 	"""Configure the dataset 
 
    	# arguments
@@ -221,13 +287,50 @@ def configure_dataset(fnames, batch_size, is_color=False, shuffle=True):
 	# Returns
 		A dataset object configured by batch size
 	"""
-
+	fnames = txt2list(glob(join(src_path, method, f"{phase}_*.txt")))
 	if shuffle: random.shuffle(fnames)
-	buffer_size = max(len(fnames) / batch_size, 16) # recommend buffer_size = # of elements / batches
+	fnames = fnames[:int(len(fnames) * frac)]
+	buffer_size = max(len(fnames) / batch_size / 16, 16) # recommend buffer_size = # of elements / batches
 	buffer_size = tf.cast(buffer_size, tf.int64)
 
 	dataset = tf.data.TFRecordDataset(fnames)
 	dataset = dataset.map(_parse_function, num_parallel_calls=cpu_count())
+	dataset = dataset.prefetch(buffer_size=buffer_size)
+	if shuffle: dataset = dataset.shuffle(buffer_size=buffer_size, reshuffle_each_iteration=True)
+	if repeat: dataset = dataset.repeat()
+	dataset = dataset.batch(batch_size)
+
+	return dataset, len(fnames) * 2
+
+
+def configure_dataset_by_np(data_path, label_path, batch_size, shuffle=True):
+	"""Configure the dataset by numpy file
+
+   	# arguments
+   		data_path: the path of numpy input data
+   		label_path: the path of numpy input label
+   		batch_size: the int represents batch size
+
+	# Returns
+		A dataset object configured by batch size
+	"""
+
+	data = np.load(data_path)
+	label = np.load(label_path)
+
+	idx = np.arange(data.shape[0])
+	np.random.shuffle(idx)
+	data = data[idx]
+	label = label[idx]
+
+	frac = 1.0
+	data = data[:int(data.shape[0] * frac)]
+	label = label[:int(label.shape[0] * frac)]
+
+	buffer_size = max(data.shape[0] / batch_size, 16) # recommend buffer_size = # of elements / batches
+	buffer_size = tf.cast(buffer_size, tf.int64)
+
+	dataset = tf.data.Dataset.from_tensor_slices((data, label))
 	dataset = dataset.prefetch(buffer_size=buffer_size) 
 	if shuffle: dataset = dataset.shuffle(buffer_size=buffer_size, reshuffle_each_iteration=True) 
 	if shuffle: dataset = dataset.repeat()
@@ -388,6 +491,7 @@ def load_callbacks(args):
 		A list of tf.keras.callbacks 
 	"""
 
+	# NETWORK 			= args.network
 	LOG_PATH 			= args.log_path
 	METHOD 				= args.method
 	BATCH_SIZE 			= args.batch_size
@@ -396,7 +500,7 @@ def load_callbacks(args):
 
 	# Set log file path
 	current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-	LOG_PATH = join(LOG_PATH, current_time + "_{}".format("all" if METHOD=="*" else METHOD))
+	LOG_PATH = join(LOG_PATH, current_time + "_{}_{}_".format("all" if METHOD=="*" else METHOD, "NETWORK"))
 
 
 	# 1. checkpoint callback
@@ -430,7 +534,7 @@ def load_callbacks(args):
 	
 
 	return LOG_PATH, [	ckpt_callback, \
-						tb_callback, \
+						# tb_callback, \
 						lr_callback, \
 						# earlyStop_callback, \
 						# getWeight_callback, \

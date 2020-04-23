@@ -73,6 +73,8 @@ def manipulate(org_img, manipulate_type, intensity="strong"):
             forged_img = cv2.GaussianBlur(org_img,(5,5),1)
         elif intensity == "weak":
             forged_img = cv2.GaussianBlur(org_img,(3,3),1)
+        elif intensity == "extreme":
+            forged_img = cv2.GaussianBlur(org_img,(15,15),100)
         
 
     elif manipulate_type == "median":
@@ -80,12 +82,16 @@ def manipulate(org_img, manipulate_type, intensity="strong"):
             forged_img = cv2.medianBlur(org_img,5)
         elif intensity == "weak":
             forged_img = cv2.medianBlur(org_img,3)
+        elif intensity == "extreme":
+            forged_img = cv2.medianBlur(org_img,15)
 
     elif manipulate_type == "noise":
         if intensity == "strong":
             sigma = 4
         elif intensity == "weak":
             sigma = 2
+        elif intensity == "extreme":
+            sigma = 100
         [row, col, c] = org_img.shape
         mean = 0
         gauss = np.random.normal(mean, sigma, (row, col, c))

@@ -52,9 +52,9 @@ class ConvBlock(Layer):
 class MISLNet(Model):
 	"""MISLNet class."""
 
-	def __init__(self, scale, reg, num_class, **kwargs):
+	def __init__(self, reg, num_class, **kwargs):
 		super(MISLNet, self).__init__(**kwargs)
-		set_parameters(scale, reg, num_class)
+		set_parameters(reg, num_class)
 
 		self.conv 	= ConstrainedLayer(3, (5,5), (1,1))
 

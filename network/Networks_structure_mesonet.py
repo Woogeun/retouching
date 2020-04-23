@@ -1,84 +1,75 @@
 """
-MesoNet module
+MISLNet module
 @authorized by Shasha Bae
-@description: define the MesoNet
+@description: define the Bayar network(MISLNet)
 """
 
 import tensorflow as tf
-from tensorflow.python.keras.layers import Layer
+from tensorflow.python import keras
 from tensorflow.python.keras import Model, Input
+from tensorflow.python.keras.layers import Layer
 
+# from . import Networks_functions
 from .Networks_functions import *
 
 
-class ConvBlock(Layer):
-	"""Conv, batchNorm, max pooling block class."""
-
-	def __init__(self, filters, kernel_size, pool_size, **kwargs):
-		super(ConvBlock, self).__init__(**kwargs)
-
-		self.conv = conv2D(filters, kernel_size)
-		self.batchNorm = batchNorm()
-		self.maxPooling = maxPooling2D(pool_size)
-
-
-	def __call__(self, inputs):
-		x = self.conv(inputs)
-		x = self.batchNorm(x)
-		x = self.maxPooling(x)
-
-		return x
-
-
-class DropoutBlock(Layer):
-	"""Dropout and fully connected class."""
-
-	def __init__(self, fc, **kwargs):
-		super(DropoutBlock, self).__init__(**kwargs)
-
-		self.dropout = dropout(0.5)
-		self.fc = dense(fc)
-
-
-	def __call__(self, inputs):
-		x = self.dropout(inputs)
-		x = self.fc(x)
-
-		return x
-
-
 class MesoNet(Model):
-	"""MesoNet class."""
+	"""MESONet class."""
 
-	def __init__(self, scale, reg, num_class, **kwargs):
+	def __init__(self, reg=0.001, num_class=2, **kwargs):
 		super(MesoNet, self).__init__(**kwargs)
-		set_parameters(scale, reg, num_class)
+		set_parameters(reg, num_class)
 
-		self.block1 = ConvBlock(8, (3,3), (2,2))
-		self.block2 = ConvBlock(8, (5,5), (2,2))
-		self.block3 = ConvBlock(16, (5,5), (2,2))
-		self.block4 = ConvBlock(16, (5,5), (4,4))
+		self.conv1 = conv2D(8, (3,3), (1,1))
+		self.relu1 = relu()
+		self.batchNorm1 = batchNorm()
+		self.maxPooling2D1 = maxPooling2D((2,2),(2,2))
 
-		self.dropout1 = DropoutBlock(16)
-		self.dropout2 = DropoutBlock(num_class)
-		
-		self.softmax = softmax()
-		
+		self.conv2 = conv2D(8, (5,5), (1,1))
+		self.relu2 = relu()
+		self.batchNorm2 = batchNorm()
+		self.maxPooling2D2 = maxPooling2D((2,2),(2,2))
+
+		self.conv3 = conv2D(16, (5,5), (1,1))
+		self.relu3 = relu()
+		self.batchNorm3 = batchNorm()
+		self.maxPooling2D3 = maxPooling2D((2,2),(2,2))
+
+		self.conv4 = conv2D(16, (5,5), (1,1))
+		self.relu4 = relu()
+		self.batchNorm4 = batchNorm()
+		self.maxPooling2D4 = maxPooling2D((4,4),(4,4))
+
+		self.flt = flatten()
+		self.fc1 = dense(16, use_bias=False, activation=None)
+		self.fc2 = dense(num_class, use_bias=False, activation='softmax')
 
 	def call(self, inputs):
-		x = self.block1(inputs)
-		x = self.block2(x)
-		x = self.block3(x)
-		x = self.block4(x)
+		x = self.conv1(inputs)
+		x = self.relu1(x)
+		x = self.batchNorm1(x)
+		x = self.maxPooling2D1(x)
 
-		x = self.dropout1(x)
-		x = self.dropout2(x)
+		x = self.conv2(x)
+		x = self.relu2(x)
+		x = self.batchNorm2(x)
+		x = self.maxPooling2D2(x)
 
-		x = self.softmax(x)
+		x = self.conv3(x)
+		x = self.relu3(x)
+		x = self.batchNorm3(x)
+		x = self.maxPooling2D3(x)
+
+		x = self.conv4(x)
+		x = self.relu4(x)
+		x = self.batchNorm4(x)
+		x = self.maxPooling2D4(x)		
+
+		x = self.flt(x)
+		x = self.fc1(x)
+		x = self.fc2(x)
 
 		return x
-
-
 
 
 

@@ -51,7 +51,7 @@ class YUVReader():
 			return len(cliped), np.array(cliped)
 
 		else:
-			return 1, np.array(frame)
+			return 1, np.array([frame])
 
 
 
@@ -100,15 +100,15 @@ class YUVReader():
 
 
 				# Divide large size frame into 256x256 size video
-				num_clips, clips = self.clip_frame(RGB, height, width, flag=True)
+				num_clips, clips = self.clip_frame(RGB, height, width, flag=False)
 				cliped_Frames.append(clips)
 
 
 
 		###################################### Write the numpy array as mp4 file
 		cliped_Frames = np.array(cliped_Frames)
-		bitrates = ["500k", "600k", "700k", "800k"]
-		# bitrates = ["500k"]
+		# bitrates = ["500k", "600k", "700k", "800k"]
+		bitrates = ["27M"]
 
 		
 		for clip_idx in range(num_clips):
@@ -137,7 +137,7 @@ def main():
 	# # parse the arguments
 	parser = argparse.ArgumentParser(description='YUV video to mp4 video')
 	parser.add_argument('--src_path', type=str, default='E:\\YUV_RAWVIDEO', help='source path')
-	parser.add_argument('--dst_path', type=str, default='E:\\YUV_RAWVIDEO/4k_videos_split', help='destination path')
+	parser.add_argument('--dst_path', type=str, default='../', help='destination path')
 	args = parser.parse_args()
 
 	src_path 	= args.src_path
@@ -147,8 +147,8 @@ def main():
 	# vtypes = ["MCLV", "MVQP", "XIPH2"]
 	# vtypes = ["XIPH2"]
 	# vtypes = ["MCLV"]
-	# vtypes = ["MVQP"]
-	vtypes = ["MCML"]
+	vtypes = ["MVQP"]
+	# vtypes = ["MCML"]
 
 
 	for vtype in vtypes:

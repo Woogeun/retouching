@@ -60,7 +60,7 @@ class Type3(Layer):
 		self.type1 = Type1(filters)
 		self.conv1 = conv2D(filters, (3,3), (1,1))
 		self.batchNorm1 = batchNorm()
-		self.averagePooling2D = averagePooling2D((3,3), (2,2))
+		self.maxPooling2D = maxPooling2D((3,3), (2,2))
 
 		self.conv2 = conv2D(filters, (3,3), (2,2))
 		self.batchNorm2 = batchNorm()
@@ -70,7 +70,7 @@ class Type3(Layer):
 		x1 = self.type1(inputs)
 		x1 = self.conv1(x1)
 		x1 = self.batchNorm1(x1)
-		x1 = self.averagePooling2D(x1)
+		x1 = self.maxPooling2D(x1)
 
 		x2 = self.conv2(inputs)
 		x2 = self.batchNorm2(x2)
@@ -102,9 +102,10 @@ class Type4(Layer):
 class SRNet(Model):
 	"""SRNet class."""
 
-	def __init__(self, scale, reg, num_class, **kwargs):
+	def __init__(self, reg, num_class, is_DPN=False, **kwargs):
 		super(SRNet, self).__init__(**kwargs)
-		set_parameters(scale, reg, num_class)
+		set_parameters(reg, num_class)
+		self.is_DPN = is_DPN
 
 		self.l1_t1 = Type1(64)
 		self.l2_t1 = Type1(16)
@@ -140,12 +141,12 @@ class SRNet(Model):
 		x = self.l10_t3(x)
 		x = self.l11_t3(x)
 
-		gpa = self.l12_t4(x)
+		gap = self.l12_t4(x)
 
-		x = self.fc(gpa)
+		x = self.fc(gap)
 
-		return x
-
+		if self.is_DPN: return x, gap
+		else: return x
 
 
 

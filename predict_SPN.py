@@ -25,7 +25,6 @@ def main():
 	parser.add_argument('--dst_path', type=str, 		default='../train_strong/median/', help='image save destination path')
 
 	parser.add_argument('--network', type=str, 			default="SRNet", help='SRNet or MISLNet or NamNet')
-	parser.add_argument('--network_scale', type=float, 	default=0.5, help='network scale')
 	parser.add_argument('--checkpoint', type=str, 		default="./logs/20191014_142248_multi_SRNet_93/checkpoint/weights_10", help='checkpoint path')
 
 	parser.add_argument('--method', type=str, 			default="multi", help='blur, median, noise or multi')
@@ -36,7 +35,6 @@ def main():
 	DST_PATH 	= args.dst_path
 
 	NETWORK 	= args.network
-	SCALE 		= args.network_scale
 	CHECKPOINT 	= args.checkpoint
 
 	METHOD 		= args.method
@@ -47,7 +45,7 @@ def main():
 
 	################################################## Load model with checkpoint
 	NUM_CLASS = 4 if METHOD == "multi" else 2
-	model = load_model(NETWORK, SCALE, __DUMMY__, NUM_CLASS)
+	model = load_model(NETWORK, __DUMMY__, NUM_CLASS)
 	load_ckpt(model, CHECKPOINT)
 
 

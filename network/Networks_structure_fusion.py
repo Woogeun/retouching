@@ -16,9 +16,9 @@ from .Networks_functions import *
 class Fusion(Model):
 	"""Fusion class."""
 
-	def __init__(self, scale, reg, num_class, **kwargs):
+	def __init__(self, reg, num_class, **kwargs):
 		super(Fusion, self).__init__(**kwargs)
-		set_parameters(scale, reg, num_class)
+		set_parameters(reg, num_class)
 
 		self.fc = dense(num_class, use_bias=False, activation='softmax')
 

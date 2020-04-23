@@ -20,22 +20,19 @@ from tensorflow.python.keras.constraints import Constraint
 
 ##################### Network parameters
 # These are the default train parameters of network models.
-# It can be set manually via `Networks_functions_keras.SCALE = 0.5`.
-SCALE = None
 REG = None
 NUM_CLASS = None
 
-def set_parameters(scale, reg, num_class):
+def set_parameters(reg, num_class):
 	"""Set gloval variables with given parameters
 
    	# arguments
-   		scale: the scale of convolutional channel (0.0 < scale <= 1.0)
    		reg: the regularization term (0.0 <= reg <= 1.0)
    		num_class: the number of class for classification
 
 	"""
-	global SCALE, REG, NUM_CLASS
-	SCALE, REG, NUM_CLASS = scale, reg, num_class
+	global REG, NUM_CLASS
+	REG, NUM_CLASS = reg, num_class
 
 
 
@@ -94,7 +91,7 @@ class CustomConstraint(Constraint):
 
 ##################### Network layer functions
 # weights
-def conv2D(filters, kernel_size, strides=(1,1), kernel_constraint=None):
+def conv2D(filters, kernel_size, strides=(1,1), kernel_constraint=None, padding='same'):
 	"""2D convolution layer
 
    	# arguments
@@ -107,8 +104,8 @@ def conv2D(filters, kernel_size, strides=(1,1), kernel_constraint=None):
 		A tf.keras.layers.Conv2D layer
 	"""
 
-	filters 			= int(SCALE * filters)
-	padding 			= 'same'
+	filters 			= filters
+	padding 			= padding
 	data_format 		= 'channels_last'
 	activation 			= None
 	use_bias 			= True
@@ -129,6 +126,42 @@ def conv2D(filters, kernel_size, strides=(1,1), kernel_constraint=None):
 					kernel_regularizer=kernel_regularizer, \
 					bias_regularizer=bias_regularizer,
 					kernel_constraint=kernel_constraint)
+
+def separableConv2D(filters, kernel_size, strides=(1,1), kernel_constraint=None, padding='same'):
+	"""2D seperable convolution layer
+
+   	# arguments
+   		filters: the number of filters
+   		kernel_size: a tuple of kernel size
+   		strides: a tuple of strides
+   		kernel_constraint: the tf.keras.constraints object 
+
+	# Returns
+		A tf.keras.layers.SeperableConv2D layer
+	"""
+
+	filters 			= filters
+	padding 			= padding
+	data_format 		= 'channels_last'
+	activation 			= None
+	use_bias 			= True
+	kernel_initializer 	= tf.keras.initializers.he_normal()
+	bias_initializer 	= tf.keras.initializers.constant(value=0.2)
+	kernel_regularizer 	= tf.keras.regularizers.l2(l=REG)
+	bias_regularizer 	= None
+
+	return SeparableConv2D(	filters=filters, \
+							kernel_size=kernel_size, \
+							strides=strides, \
+							padding=padding, \
+							data_format=data_format, \
+							activation=activation, \
+							use_bias=use_bias, \
+							kernel_initializer=kernel_initializer, \
+							bias_initializer=bias_initializer, \
+							kernel_regularizer=kernel_regularizer, \
+							bias_regularizer=bias_regularizer,
+							kernel_constraint=kernel_constraint)
 
 def dense(units, use_bias=True, activation=None):
 	"""Fully connected layer
@@ -197,7 +230,7 @@ def sigmoid():
 
 
 # pooling
-def maxPooling2D(pool_size, strides=(1,1)):
+def maxPooling2D(pool_size, strides=(1,1), padding='same'):
 	"""Max pooling layer
 
    	# arguments
@@ -208,7 +241,7 @@ def maxPooling2D(pool_size, strides=(1,1)):
 		A tf.keras.layers.MaxPooling2D 
 	"""
 
-	padding 	= 'same'
+	padding 	= padding
 
 	return MaxPool2D(	pool_size=pool_size, \
 						strides=strides, \
